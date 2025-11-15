@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Hello world</title>
+        <link rel="icon" type="image/x-icon" href="favicon.ico">
+        <style>
+            form {
+                border-radius: 5px;
+                background-color: #f2f2f2;
+                padding: 20px;
+            }
+
+            label {display: block;}
+
+            input[type=text], select {
+                width: 100%;
+                padding: 12px;
+                margin: 8px 0;
+                display: inline-block;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                box-sizing: border-box;
+            }
+
+            input[type=button] {
+                width: 100%;
+                background-color: #4CAF50;
+                color: white;
+                padding: 14px;
+                margin: 8px 0;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+
+            input[type=button]:hover {
+                background-color: #45a049;
+            }
+
+            * {
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 20px;
+            }
+
+            h2 {
+                color: purple;
+            }
+
+            #heading-tag {
+                color: green;
+            }
+
+            .important-h2 {
+                color: red;
+            }
+
+            #register-form input[type=text]:first-of-type {
+                color:red;
+            }
+            .msg-error{
+                color: red;
+            }
+            .msg-success{
+                color: green;
+            }
+        </style>
+    </head>
+    <body>        
+        <a href="#">Click me</a>
+        <h2 id="heading-tag">Style an HTML Form with CSS</h2>
+        <h2 class="important-h2">Style an HTML Form with CSS</h2>
+        <h2>Style an HTML Form with CSS</h2>        
+
+        <form id="register-form" action="/action_page.php">
+            <label for="fname">First Name</label>
+            <input type="text" id="fname" name="firstname" placeholder="Your name..">
+            <span></span>
+            <label for="lname">Last Name</label>
+            <input type="text" id="lname" name="lastname" placeholder="Your last name..">
+
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="Your email..">
+
+            <label for="country">Country</label>
+            <select id="country" name="country">
+                <option value="australia">Australia</option>
+                <option value="canada">Canada</option>
+                <option value="usa">USA</option>
+            </select>
+
+            <input type="button" value="Submit">
+        </form>
+
+        <h2>Login form</h2>
+        <form id="login-form" action="/action_page.php">
+            <label for="fname">First Name</label>
+            <input type="text" id="fname" name="firstname" placeholder="Your name..">
+            
+            <label for="lname">Last Name</label>
+            <input type="text" id="lname" name="lastname" placeholder="Your last name..">
+
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="Your email..">
+
+            <label for="country">Country</label>
+            <select id="country" name="country">
+                <option value="australia">Australia</option>
+                <option value="canada">Canada</option>
+                <option value="usa">USA</option>
+            </select>
+
+            <input type="submit" value="Submit">
+        </form>
+        <script>            
+            var inputFirstName = document.querySelector("#register-form input[type=text][name=firstname]");
+            console.log(inputFirstName);
+            var btnRegisterSubmit = document.querySelector("#register-form input[type=button]");
+            btnRegisterSubmit.value = "Click em di";
+            btnRegisterSubmit.onclick = function(){
+                var fname = inputFirstName.value;
+                var spanMsg =  inputFirstName.nextElementSibling;
+                if(fname.length == 0){                    
+                    spanMsg.innerText = "* Please enter first name.";
+                    spanMsg.className = "msg-error";                    
+                }else{
+                    spanMsg.innerText = "v";
+                    spanMsg.className = "msg-success";                    
+                }
+            }
+        </script>
+    </body>
+</html>
+
+
