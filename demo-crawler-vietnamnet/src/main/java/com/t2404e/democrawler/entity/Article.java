@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -23,8 +25,15 @@ public class Article {
     private String description;
     @Column(columnDefinition = "TEXT")
     private String content;
+    // Ảnh chính (ảnh đầu tiên)
+    @Column(name = "image_url", length = 1000)
     private String imageUrl;
+
     @Column(name = "is_crawled")
     private boolean isCrawled;
     private int status;
+
+    @OneToMany(mappedBy = "article", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ArticleImage> images = new java.util.ArrayList<>();
+
 }

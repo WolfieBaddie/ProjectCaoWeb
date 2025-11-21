@@ -1,7 +1,8 @@
 package com.t2404e.democrawler.messaging;
 
 import com.t2404e.democrawler.config.CrawlRabbitConfig;
-import com.t2404e.democrawler.service.CrawlService;
+import com.t2404e.democrawler.service.ContentCrawlerService;
+import com.t2404e.democrawler.util.CrawlHelper;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,20 +16,21 @@ import java.time.Duration;
 
 @Component
 @RequiredArgsConstructor
-public class ArticleConsumer {
-    private static final Logger log = LoggerFactory.getLogger(ArticleConsumer.class);
+public class ContentCrawlerConsumer {
+    private static final Logger log = LoggerFactory.getLogger(ContentCrawlerConsumer.class);
 
     private final StringRedisTemplate redis;
-    private final CrawlService crawlService;
+    private final ContentCrawlerService contentCrawlerService;
 
     // Giới hạn độ sâu mở rộng liên quan (có thể chỉnh)
     private static final int MAX_DEPTH = 3;
 
     // TTL cho dedupe bài viết
     private static final Duration TTL_ARTICLE = java.time.Duration.ofDays(7);
+    private final CrawlHelper crawlHelper;
 
     @RabbitListener(queues = CrawlRabbitConfig.Q_ART, concurrency = "2-6")
-    public void onArticle(CrawlTask t) {
+    public void onArticle(CrawlMessage t) {
         if (t == null || t.getUrl() == null) return;
 
         // Chặn nới rộng quá sâu
@@ -37,7 +39,7 @@ public class ArticleConsumer {
             return;
         }
 
-        String key = "dedupe:article:" + t.getSourceId() + ":" + crawlService.sha1(t.getUrl());
+        String key = "dedupe:article:" + t.getSourceId() + ":" + crawlHelper.sha1(t.getUrl());
         Boolean first = redis.opsForValue().setIfAbsent(key, "1", java.time.Duration.ofDays(7));
         log.info("ARTICLE key={} first={} url={}", key, first, t.getUrl());
 
@@ -48,7 +50,7 @@ public class ArticleConsumer {
 
         try {
             // Ủy quyền business cho service: parse + save + enqueue liên quan (nếu depth còn)
-            crawlService.handleArticle(t);
+            contentCrawlerService.handleArticle(t);
             log.info("ARTICLE OK: {} (slug={}, depth={})", t.getUrl(), t.getSlug(), t.getDepth());
         } catch (Exception e) {
             log.error("ARTICLE error {}: {}", t.getUrl(), e.getMessage(), e);

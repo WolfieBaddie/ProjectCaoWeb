@@ -8,10 +8,10 @@ import static com.t2404e.democrawler.config.CrawlRabbitConfig.EX;
 
 @Component
 @RequiredArgsConstructor
-public class CrawlProducer {
+public class LinkCrawlerProducer {
     private final RabbitTemplate tpl;
 
-    public void send(CrawlTask t) {
+    public void send(CrawlMessage t) {
         String rk = switch (t.getKind()) {
             case CATEGORY -> "cat";
             case LISTING  -> "list";

@@ -1,6 +1,7 @@
 package com.t2404e.democrawler.messaging;
 
-import com.t2404e.democrawler.service.CrawlService;
+import com.t2404e.democrawler.service.ContentCrawlerService;
+import com.t2404e.democrawler.util.CrawlHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -16,43 +17,44 @@ import static com.t2404e.democrawler.config.CrawlRabbitConfig.*;
 @RequiredArgsConstructor
 public class CrawlConsumer {
     private final StringRedisTemplate redis;
-    private final CrawlService crawl;
+    private final CrawlHelper crawlHelper;
+    private final ContentCrawlerService contentCrawlerService;
 
     @RabbitListener(queues = Q_CAT, concurrency = "2-4")
-    public void onCategory(CrawlTask t){
-        String slug = t.getSlug() != null ? t.getSlug() : crawl.slugOf(t.getUrl());
+    public void onCategory(CrawlMessage t){
+        String slug = t.getSlug() != null ? t.getSlug() : crawlHelper.slugOf(t.getUrl());
         String key = (slug != null)
                 ? "dedupe:cat:" + t.getSourceId() + ":" + slug
-                : "dedupe:cat:" + t.getSourceId() + ":url:" + crawl.sha1(crawl.canonical(t.getUrl()));
+                : "dedupe:cat:" + t.getSourceId() + ":url:" + crawlHelper.sha1(crawlHelper.canonical(t.getUrl()));
 
         Boolean first = redis.opsForValue().setIfAbsent(key, "1", Duration.ofHours(1)); // dev: 1h
         log.info("CAT  key={} first={} slug={} url={}", key, first, slug, t.getUrl());
         if (Boolean.FALSE.equals(first)) return;
 
-        crawl.handleCategory(t);
+        contentCrawlerService.handleCategory(t);
     }
 
     @RabbitListener(queues = Q_LIST, concurrency = "2-4") // giảm concurrency để debug cho dễ
-    public void onListing(CrawlTask t){
-        String urlKey = crawl.canonical(t.getUrl()); // luôn canonical để key ổn định
-        String key = "dedupe:listing:" + t.getSourceId() + ":" + crawl.sha1(urlKey);
+    public void onListing(CrawlMessage t){
+        String urlKey = crawlHelper.canonical(t.getUrl()); // luôn canonical để key ổn định
+        String key = "dedupe:listing:" + t.getSourceId() + ":" + crawlHelper.sha1(urlKey);
 
         Boolean first = redis.opsForValue().setIfAbsent(key, "1", Duration.ofSeconds(60));
         log.info("LIST key={} first={} url={}", key, first, urlKey);
         if (Boolean.FALSE.equals(first)) return;
 
-        crawl.handleListing(t);
+        contentCrawlerService.handleListing(t);
     }
 
     @RabbitListener(queues = Q_ART, concurrency = "2-6") // giảm để thấy log
-    public void onArticle(CrawlTask t){
-        String urlKey = crawl.canonical(t.getUrl()); // đề phòng có query, anchor
-        String key = "dedupe:article:" + t.getSourceId() + ":" + crawl.sha1(urlKey);
+    public void onArticle(CrawlMessage t){
+        String urlKey = crawlHelper.canonical(t.getUrl()); // đề phòng có query, anchor
+        String key = "dedupe:article:" + t.getSourceId() + ":" + crawlHelper.sha1(urlKey);
 
         Boolean first = redis.opsForValue().setIfAbsent(key, "1", Duration.ofDays(7));
         log.info("ART  key={} first={} url={}", key, first, urlKey);
         if (Boolean.FALSE.equals(first)) return;
 
-        crawl.handleArticle(t);
+        contentCrawlerService.handleArticle(t);
     }
 }

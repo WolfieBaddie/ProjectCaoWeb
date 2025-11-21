@@ -2,8 +2,8 @@ package com.t2404e.democrawler.controller.admin;
 
 import com.t2404e.democrawler.dto.ArticleSourceForm;
 import com.t2404e.democrawler.entity.ArticleSource;
-import com.t2404e.democrawler.messaging.CrawlProducer;
-import com.t2404e.democrawler.messaging.CrawlTask;
+import com.t2404e.democrawler.messaging.LinkCrawlerProducer;
+import com.t2404e.democrawler.messaging.CrawlMessage;
 import com.t2404e.democrawler.repository.ArticleCategoryRepository;
 import com.t2404e.democrawler.repository.ArticleSourceRepository;
 import com.t2404e.democrawler.service.ArticleSourceService;
@@ -24,7 +24,7 @@ import java.util.Map;
 @RequestMapping("/admin/api")
 public class AdminController {
 
-    private final CrawlProducer producer;
+    private final LinkCrawlerProducer producer;
     private final AmqpAdmin amqpAdmin;
     private final StringRedisTemplate redis;
     private final RabbitTemplate rt;
@@ -46,7 +46,7 @@ public class AdminController {
         String key = "dedupe:cat:" + sourceId + ":" + slug;
         if (force) redis.delete(key);
 
-        producer.send(new CrawlTask(CrawlTask.Kind.CATEGORY, url, slug, 0, sourceId));
+        producer.send(new CrawlMessage(CrawlMessage.Kind.CATEGORY, url, slug, 0, sourceId));
         return "queued CATEGORY: slug=" + slug + ", url=" + url + ", force=" + force;
     }
 
@@ -72,9 +72,21 @@ public class AdminController {
                 : "https://vietnamnet.vn" + (href.startsWith("/") ? href : "/" + href);
 
         String slug = slugFirst(url);
-        producer.send(new CrawlTask(CrawlTask.Kind.LISTING, url, slug, depth, sourceId));
+        producer.send(new CrawlMessage(CrawlMessage.Kind.LISTING, url, slug, depth, sourceId));
         return "queued LISTING: slug=" + slug + ", url=" + url + ", depth=" + depth;
     }
+
+    //Api chỉnh sửa trạng thái nguồn crawler
+    @PatchMapping("/sources/{id}/status")
+    public void updateSourceStatus(@PathVariable Long id,
+                                   @RequestParam("enabled") boolean enabled) {
+        ArticleSource src = articleSourceRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Not found ArticleSource id=" + id));
+
+        src.setStatus(enabled ? 1 : 0);
+        articleSourceRepository.save(src);
+    }
+
 
     // ====== Đẩy 1 bài viết cụ thể để smoke-test ARTICLE
     // GET /sys/rabbit/ping?url=https://vietnamnet.vn/...-2462040.html&sourceId=1
@@ -84,7 +96,7 @@ public class AdminController {
                                  @RequestParam(defaultValue = "0") int depth) {
         String abs = url.startsWith("http") ? canonical(url) : "https://vietnamnet.vn" + url;
         String slug = slugFirst(abs);
-        producer.send(new CrawlTask(CrawlTask.Kind.ARTICLE, abs, slug, depth, sourceId));
+        producer.send(new CrawlMessage(CrawlMessage.Kind.ARTICLE, abs, slug, depth, sourceId));
         return "queued ARTICLE: slug=" + slug + ", url=" + abs + ", depth=" + depth;
     }
 
@@ -122,16 +134,16 @@ public class AdminController {
         String slug = slugFirst(abs);
 
         // map kind -> routing key
-        CrawlTask.Kind k = switch (kind.toLowerCase()) {
-            case "cat", "category"    -> CrawlTask.Kind.CATEGORY;
-            case "list", "listing"    -> CrawlTask.Kind.LISTING;
-            case "art", "article"     -> CrawlTask.Kind.ARTICLE;
+        CrawlMessage.Kind k = switch (kind.toLowerCase()) {
+            case "cat", "category"    -> CrawlMessage.Kind.CATEGORY;
+            case "list", "listing"    -> CrawlMessage.Kind.LISTING;
+            case "art", "article"     -> CrawlMessage.Kind.ARTICLE;
             default -> throw new IllegalArgumentException("kind must be cat|list|article");
         };
-        String rk = (k == CrawlTask.Kind.CATEGORY) ? "cat" :
-                (k == CrawlTask.Kind.LISTING)  ? "list" : "article";
+        String rk = (k == CrawlMessage.Kind.CATEGORY) ? "cat" :
+                (k == CrawlMessage.Kind.LISTING)  ? "list" : "article";
 
-        CrawlTask t = new CrawlTask(k, abs, slug, depth, sourceId);
+        CrawlMessage t = new CrawlMessage(k, abs, slug, depth, sourceId);
         rt.convertAndSend("crawl.ex", rk, t);  // <-- gửi object, không gửi String
         return "sent " + k + " rk=" + rk + " url=" + abs + " slug=" + slug;
     }

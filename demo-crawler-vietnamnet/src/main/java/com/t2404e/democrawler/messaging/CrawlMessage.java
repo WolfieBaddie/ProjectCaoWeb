@@ -2,7 +2,7 @@ package com.t2404e.democrawler.messaging;
 
 import java.io.Serializable;
 
-public class CrawlTask implements Serializable {
+public class CrawlMessage implements Serializable {
     public enum Kind { CATEGORY, LISTING, ARTICLE }
 
     private Kind kind;
@@ -11,9 +11,9 @@ public class CrawlTask implements Serializable {
     private int depth;      // để hạn độ sâu mở rộng
     private Long sourceId;  // id của ArticleSource
 
-    public CrawlTask() {}
+    public CrawlMessage() {}
 
-    public CrawlTask(Kind kind, String url, String slug, int depth, Long sourceId) {
+    public CrawlMessage(Kind kind, String url, String slug, int depth, Long sourceId) {
         this.kind = kind; this.url = url; this.slug = slug; this.depth = depth; this.sourceId = sourceId;
     }
 
