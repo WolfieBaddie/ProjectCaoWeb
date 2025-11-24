@@ -1,0 +1,5 @@
+{
+  "name": "Crawler Admin Dashboard",
+  "description": "An admin dashboard to manage and configure web crawler settings, including source and content selectors, and bot controls.",
+  "requestFramePermissions": []
+}
