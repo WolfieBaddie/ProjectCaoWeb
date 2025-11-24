@@ -2,7 +2,6 @@ package com.t2404e.democrawler.service;
 
 import com.t2404e.democrawler.entity.ArticleSource;
 import com.t2404e.democrawler.messaging.CrawlMessage;
-import com.t2404e.democrawler.messaging.LinkCrawlerConsumer;
 import com.t2404e.democrawler.messaging.LinkCrawlerProducer;
 import com.t2404e.democrawler.repository.ArticleSourceRepository;
 import lombok.RequiredArgsConstructor;

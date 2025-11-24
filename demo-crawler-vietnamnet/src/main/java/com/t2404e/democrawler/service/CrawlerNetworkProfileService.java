@@ -85,12 +85,14 @@ public class CrawlerNetworkProfileService {
     }
 
     private void loadUserAgentsFromFile() {
+        log.info("Working dir = {}", new java.io.File(".").getAbsolutePath());
         if (userAgentFilePath == null || userAgentFilePath.isBlank()) return;
         userAgents.addAll(loadLines(userAgentFilePath));
         log.info("Loaded {} user agents from file {}", userAgents.size(), userAgentFilePath);
     }
 
     private void loadFakeIpsFromFile() {
+        log.info("Working dir = {}", new java.io.File(".").getAbsolutePath());
         if (ipFilePath == null || ipFilePath.isBlank()) return;
         fakeIps.addAll(loadLines(ipFilePath));
         log.info("Loaded {} fake IPs from file {}", fakeIps.size(), ipFilePath);

@@ -46,6 +46,8 @@ public class CrawlerLog {
 
     private Long articleId;  // Article.id nếu có
 
+    private Long categoryId;
+
     @Column(columnDefinition = "TEXT")
     private String exception; // stacktrace / message lỗi (optional)
 
