@@ -50,6 +50,10 @@ public class ArticleSourceForm {
     @Size(max = 1000)
     private String removeSelector;
 
+    // THÊM MỚI: selector lấy thời gian bài viết
+    @Size(max = 1000)
+    private String timeSelector;
+
     @Size(max = 500)
     private String note;
 

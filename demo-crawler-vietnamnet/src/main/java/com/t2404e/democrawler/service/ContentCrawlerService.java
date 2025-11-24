@@ -90,9 +90,39 @@ public class ContentCrawlerService {
            }
 
 
+           // Bước 1: gom hết URL article vào Set
+           for (Element a : doc.select("a[href]")) {
+               String abs = crawlHelper.canonical(a.absUrl("href"));
+               if (abs.isEmpty() || !crawlHelper.isSameHost(abs)) continue;
+
+               if (crawlHelper.isArticle(abs)) {
+                   articles.add(abs);
+                   continue;
+               }
+
+               if (slug.equals(crawlHelper.slugOf(abs))) {
+                   subListings.add(abs);
+               }
+           }
+
+            // Bước 2: hỏi DB một lần: trong đống này, URL nào đã tồn tại?
+           Set<String> existing = new HashSet<>(
+                   articleRepo.findAllUrlByUrlIn(articles)  // custom query
+           );
+
+
            // 1) Đẩy các bài sang queue ARTICLE
            for (String u : articles) {
-               producer.send(new CrawlMessage(CrawlMessage.Kind.ARTICLE, u, slug, t.getDepth() + 1, t.getSourceId()));
+               if (existing.contains(u)) {
+                   continue;
+               }
+               producer.send(new CrawlMessage(
+                       CrawlMessage.Kind.ARTICLE,
+                       u,
+                       slug,
+                       t.getDepth() + 1,
+                       t.getSourceId()
+               ));
            }
 
            // 2) Đẩy các listing con (phân trang/nhánh con) để quét cạn
@@ -195,6 +225,12 @@ public class ContentCrawlerService {
 
             a.setCrawled(true);
             a.setStatus(ArticleStatus.DRAFT);
+
+            // Lấy text thời gian từ selector trong ArticleSource (VD: "div.bread-crumb-detail__time")
+            String timeText = crawlHelper.text(doc.selectFirst(src.getTimeSelector()));
+
+            // Parse về LocalDateTime và set vào Article
+            a.setCreated_at(crawlHelper.parseVietnamnetTime(timeText));
 
             a.getImages().clear();
 

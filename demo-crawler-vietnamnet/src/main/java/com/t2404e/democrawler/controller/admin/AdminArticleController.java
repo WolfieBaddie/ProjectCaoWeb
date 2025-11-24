@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
+import com.t2404e.democrawler.dto.ArticleDetailDto;
+import com.t2404e.democrawler.dto.UpdateArticleRequest;
 
 @RestController
 @RequiredArgsConstructor
@@ -60,5 +62,18 @@ public class AdminArticleController {
                 status,
                 PageRequest.of(page, size)
         );
+    }
+
+    @GetMapping("/articles/{id}")
+    public ArticleDetailDto getArticle(@PathVariable Long id) {
+        return articleService.getArticleDetail(id);
+    }
+
+    @PutMapping("/articles/{id}")
+    public ArticleDetailDto updateArticle(
+            @PathVariable Long id,
+            @RequestBody UpdateArticleRequest request
+    ) {
+        return articleService.updateArticle(id, request);
     }
 }

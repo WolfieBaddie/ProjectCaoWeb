@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +18,8 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
 
     Optional<Article> findByUrl(String url);
 
+    @Query("select a.url from Article a where a.url in :urls")
+    List<String> findAllUrlByUrlIn(Collection<String> urls);
     /**
      * Search các bài viết ĐÃ CRAWL (is_crawled = 1) có phân trang.
      *

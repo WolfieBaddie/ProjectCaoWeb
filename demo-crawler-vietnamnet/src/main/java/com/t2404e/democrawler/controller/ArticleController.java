@@ -24,7 +24,7 @@ public class ArticleController {
 
     @GetMapping("/{url}")
     public Article get(@PathVariable String url) {
-        return articleRepo.findById(url)
+        return articleRepo.findByUrl(url)
                 .orElseThrow(() -> new NoSuchElementException("Article not found"));
     }
 

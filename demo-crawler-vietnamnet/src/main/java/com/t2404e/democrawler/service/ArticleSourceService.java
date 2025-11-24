@@ -56,7 +56,7 @@ public class ArticleSourceService {
 
         // selector để xoá rác (quảng cáo, box relate, script, style...)
         source.setRemoveSelector(form.getRemoveSelector());
-
+        source.setTimeSelector(form.getTimeSelector());
         // trạng thái (0/1), lấy đúng từ form
         source.setStatus(form.getStatus());
 

@@ -3,6 +3,7 @@ package com.t2404e.democrawler.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.t2404e.democrawler.common.ArticleStatus;
 import com.t2404e.democrawler.dto.ArticleListItemDto;
+import com.t2404e.democrawler.dto.UpdateArticleRequest;
 import com.t2404e.democrawler.entity.Article;
 import com.t2404e.democrawler.repository.ArticleRepository;
 import lombok.AllArgsConstructor;
@@ -18,7 +19,14 @@ import org.springframework.util.DigestUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+
+import com.t2404e.democrawler.dto.ArticleDetailDto;
+import com.t2404e.democrawler.dto.ArticleImageDto;
+import com.t2404e.democrawler.entity.ArticleImage;
+
 
 @Slf4j
 @Service
@@ -32,7 +40,85 @@ public class ArticleService {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
-    /**
+    // ==== Lấy chi tiết article (bao gồm list ảnh) ====
+    @Transactional(readOnly = true)
+    public ArticleDetailDto getArticleDetail(Long id) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Article not found: " + id));
+
+        String categoryName = null;
+        if (article.getArticleCategory() != null) {
+            categoryName = article.getArticleCategory().getName();
+        }
+
+        // map list ArticleImage -> ArticleImageDto
+        List<ArticleImageDto> imageDtos = article.getImages().stream()
+                .sorted(Comparator.comparing(img -> img.getSortOrder() == null ? 0 : img.getSortOrder()))
+                .map(this::toImageDto)
+                .toList();
+
+        return ArticleDetailDto.builder()
+                .id(article.getId())
+                .url(article.getUrl())
+                .title(article.getTitle())
+                .description(article.getDescription())
+                .content(article.getContent())
+                .categoryName(categoryName)
+                .createdAt(article.getCreated_at())
+                .updatedAt(article.getUpdated_at())
+                .publishedAt(article.getPublished_at())
+                .imageUrl(article.getImageUrl())
+                .status(article.getStatus())
+                .images(imageDtos)
+                .build();
+    }
+
+    private ArticleImageDto toImageDto(ArticleImage img) {
+        return ArticleImageDto.builder()
+                .id(img.getId())
+                .url(img.getUrl())
+                .alt(img.getAlt())
+                .caption(img.getCaption())
+                .thumbSmall(img.getThumbSmall())
+                .thumb(img.getThumb())
+                .sortOrder(img.getSortOrder())
+                .build();
+    }
+
+    // ==== Update article từ form UI ====
+    @Transactional
+    public ArticleDetailDto updateArticle(Long id, UpdateArticleRequest req) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Article not found: " + id));
+
+        if (req.getTitle() != null) {
+            article.setTitle(req.getTitle());
+        }
+        if (req.getContent() != null) {
+            article.setContent(req.getContent());
+        }
+        if (req.getDescription() != null) {
+            article.setDescription(req.getDescription());
+        }
+        if (req.getImageUrl() != null) {
+            article.setImageUrl(req.getImageUrl());
+        }
+        if (req.getStatus() != null) {
+            article.setStatus(req.getStatus());
+        }
+
+        article.setUpdated_at(LocalDateTime.now());
+
+        Article saved = articleRepository.save(article);
+
+        // TODO: invalidate cache Redis nếu bạn có cache list articles
+
+        return getArticleDetail(saved.getId());
+    }
+
+
+
+/**
      * Search các bài ĐÃ CRAWL (is_crawled = 1) có phân trang + cache Redis.
      *
      * Dùng cho:

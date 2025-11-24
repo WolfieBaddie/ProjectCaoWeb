@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 /**
  * DTO dùng cho phần Latest Fetched News / list bài viết ở dashboard.
  */
@@ -25,4 +27,5 @@ public class ArticleListItemDto {
 
     // hiển thị tên category cho tiện
     private String categoryName;
+    private LocalDateTime created_at;
 }

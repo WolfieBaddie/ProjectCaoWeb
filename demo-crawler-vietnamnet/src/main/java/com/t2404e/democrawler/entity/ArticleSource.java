@@ -33,6 +33,9 @@ public class ArticleSource {
     private String contentSelector;
     private String imageSelector;
 
+    @Column(name = "time_selector", length = 1000)
+    private String timeSelector;
+
     private String removeSelector; // selector để loại ads/box-relate/script...
     private int status;
 

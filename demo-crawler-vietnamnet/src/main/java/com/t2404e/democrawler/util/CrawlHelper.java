@@ -14,6 +14,9 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Slf4j
@@ -303,4 +306,25 @@ public class CrawlHelper {
         return order;
     }
 
+    public LocalDateTime parseVietnamnetTime(String raw) {
+        if (raw == null) return null;
+        raw = raw.trim();
+        if (raw.isEmpty()) return null;
+
+        try {
+            // Tách bỏ phần "Thứ Hai," nếu có
+            String[] parts = raw.split(",", 2);
+            String datePart = parts.length == 2 ? parts[1].trim() : raw;
+
+            // "24/11/2025 - 16:47" -> "24/11/2025 16:47"
+            datePart = datePart.replace(" - ", " ").trim();
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+            return LocalDateTime.parse(datePart, formatter);
+        } catch (DateTimeParseException e) {
+            // Không parse được thì log + trả null, không sập app
+            log.warn("Không parse được publish time: '{}'", raw, e);
+            return null;
+        }
+    }
 }

@@ -6,7 +6,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+import java.util.List;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -32,6 +33,16 @@ public class Article {
 
     @Column(columnDefinition = "LONGTEXT")
     private String content;
+
+    // Thời điểm bài viết được đăng trên trang gốc (VD: Vietnamnet)
+    @Column(name = "created_at")
+    private LocalDateTime created_at;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updated_at;
+
+    @Column(name = "published_at")
+    private LocalDateTime published_at;
 
     // Ảnh chính (ảnh đầu tiên)
     @Column(name = "image_url", length = 1000)

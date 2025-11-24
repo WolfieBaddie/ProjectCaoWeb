@@ -1,0 +1,25 @@
+// src/main/java/com/t2404e/democrawler/config/WebCorsConfig.java
+package com.t2404e.democrawler.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class WebCorsConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/admin/api/**")
+                // origin của React dev server
+                .allowedOrigins(
+                        "http://localhost:3000",
+                        "http://192.168.1.62:3000",
+                        "http://172.23.32.1:3000",
+                        "http://172.31.0.1:3000"
+                )
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+    }
+}
