@@ -8,23 +8,20 @@ export interface CrawlerBotConfig {
     contentEnabled: boolean;
 }
 
-// Đọc base URL từ env (Vite) / CRA, fallback localhost:8080
-const API_BASE_URL: string =
-    (import.meta as any).env?.VITE_API_BASE_URL ??
-    (typeof process !== 'undefined'
-        ? (process as any).env?.REACT_APP_API_BASE_URL
-        : undefined) ??
-    'http://localhost:8080';
+// ⛔️ Không cần tự build base URL ở đây nữa nếu httpClient đã có baseURL
+// Nếu chỗ khác còn dùng thì bạn giữ lại, nhưng KHÔNG dùng trong 2 hàm dưới.
 
+// Nếu vẫn muốn giữ helper:
 function buildUrl(path: string): string {
-    // Nếu đã là absolute URL thì trả về luôn
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-        return path;
-    }
-    const base = API_BASE_URL.replace(/\/+$/, '');
-    const p = path.startsWith('/') ? path : `/${path}`;
-    return `${base}${p}`;
+    return path; // để nó trả về đúng path tương đối, cho httpClient tự xử lý
 }
+
+export async function getCrawlerBotConfig(): Promise<CrawlerBotConfig> {
+    return httpClient.get<CrawlerBotConfig>(
+        buildUrl('/admin/api/crawler-bot-config'),
+    );
+}
+
 
 /**
  * Bật/tắt bot crawl link.
@@ -32,7 +29,7 @@ function buildUrl(path: string): string {
  */
 export async function setLinkCrawlerEnabled(enabled: boolean): Promise<void> {
     await httpClient.post<void>(
-        buildUrl(`/admin/api/link?enabled=${enabled}`),
+        `/admin/api/link?enabled=${enabled}`,
         undefined,
     );
 }
@@ -45,7 +42,7 @@ export async function setContentCrawlerEnabled(
     enabled: boolean,
 ): Promise<void> {
     await httpClient.post<void>(
-        buildUrl(`/admin/api/content?enabled=${enabled}`),
+        `/admin/api/content?enabled=${enabled}`,
         undefined,
     );
 }

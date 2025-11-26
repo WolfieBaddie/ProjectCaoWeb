@@ -36,7 +36,7 @@ public class CrawlConsumer {
     // ==========================
     // CATEGORY (LinkCrawlerBot)
     // ==========================
-    @RabbitListener(queues = Q_CAT, concurrency = "2-4")
+    @RabbitListener(queues = Q_CAT, concurrency = "1-2")
     public void onCategory(CrawlMessage t) {
 
         // 1) Check công tắc global LinkCrawler
@@ -61,7 +61,7 @@ public class CrawlConsumer {
     // ==========================
     // LISTING (LinkCrawlerBot)
     // ==========================
-    @RabbitListener(queues = Q_LIST, concurrency = "2-4")
+    @RabbitListener(queues = Q_LIST, concurrency = "1-2")
     public void onListing(CrawlMessage t) {
 
         // 1) Check công tắc global LinkCrawler
@@ -109,7 +109,7 @@ public class CrawlConsumer {
     // ==========================
     // ARTICLE (ContentCrawlerBot)
     // ==========================
-    @RabbitListener(queues = Q_ART, concurrency = "2-6") // giảm để thấy log
+    @RabbitListener(queues = Q_ART, concurrency = "1-2") // giảm để thấy log
     public void onArticle(CrawlMessage t){
 
         // 1) Check công tắc global ContentCrawler

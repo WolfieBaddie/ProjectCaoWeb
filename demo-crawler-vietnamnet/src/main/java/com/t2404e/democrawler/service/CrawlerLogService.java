@@ -1,10 +1,14 @@
 package com.t2404e.democrawler.service;
 
+import com.t2404e.democrawler.dto.ArticleSourceDto;
 import com.t2404e.democrawler.dto.CrawlerLogDetailDto;
 import com.t2404e.democrawler.dto.CrawlerLogDto;
+import com.t2404e.democrawler.entity.ArticleSource;
 import com.t2404e.democrawler.entity.CrawlerLog;
 import com.t2404e.democrawler.entity.CrawlerLog.BotType;
+import com.t2404e.democrawler.repository.ArticleSourceRepository;
 import com.t2404e.democrawler.repository.CrawlerLogRepository;
+import com.t2404e.democrawler.repository.CrawlerLogSourceStats;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,13 +21,18 @@ import org.springframework.util.StringUtils;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class CrawlerLogService {
 
     private final CrawlerLogRepository repo;
+    private final ArticleSourceRepository articleSourceRepository;
 
     private void save(String level,
                       BotType botType,
@@ -83,6 +92,40 @@ public class CrawlerLogService {
         save("ERROR", BotType.CONTENT, message, url, sourceId, articleId, categoryId, ex);
     }
 
+    /**
+     * Danh sách ArticleSource (status = 1) + thống kê log CONTENT
+     */
+    public List<ArticleSourceDto> getSourceOverviewForContentBot() {
+        // 1) Chỉ lấy source đang active (status = 1)
+        List<ArticleSource> sources = articleSourceRepository.findByStatus(1);
+
+        if (sources.isEmpty()) {
+            return List.of();
+        }
+
+        // 2) Lấy thống kê log cho bot CONTENT
+        List<CrawlerLogSourceStats> statsList =
+                repo.findSourceStatsByBotType(BotType.CONTENT);
+
+        Map<Long, CrawlerLogSourceStats> statsBySourceId = statsList.stream()
+                .collect(Collectors.toMap(
+                        CrawlerLogSourceStats::getSourceId,
+                        Function.identity()
+                ));
+
+        // 3) Gộp vào DTO
+        return sources.stream()
+                .map(src -> {
+                    CrawlerLogSourceStats s = statsBySourceId.get(src.getId());
+                    long totalLogs = (s != null) ? s.getTotalLogs() : 0L;
+                    LocalDateTime lastRun = (s != null) ? s.getLastRun() : null;
+
+                    return ArticleSourceDto.fromEntityWithStats(src, totalLogs, lastRun);
+                })
+                .toList();
+    }
+
+
     //Tìm kiếm logs cho admin
 
     // =========================
@@ -135,10 +178,12 @@ public class CrawlerLogService {
             Long categoryId,
             Long articleId,
             String level,
+            String keyword,
+            LocalDateTime fromDate,
+            LocalDateTime toDate,
             int page,
             int size
     ) {
-        // Sort createdAt DESC ngay ở đây, không cần withSort
         Pageable pageable = PageRequest.of(
                 page,
                 size,
@@ -153,20 +198,21 @@ public class CrawlerLogService {
                 level
         );
 
-        Page<CrawlerLog> logs = repo.findAll(spec, pageable);
+        Page<CrawlerLog> result = repo.findAll(spec, pageable);
 
-        return logs.map(l -> new CrawlerLogDto(
+        return result.map(l -> new CrawlerLogDto(
                 l.getId(),
                 l.getBotType() != null ? l.getBotType().name() : null,
                 l.getLevel(),
                 l.getMessage(),
                 l.getUrl(),
                 l.getSourceId(),
-                l.getCategoryId(),
                 l.getArticleId(),
+                l.getCategoryId(),
                 l.getCreatedAt()
         ));
     }
+
 
     public Optional<CrawlerLogDetailDto> getLogDetail(Long id) {
         return repo.findById(id)

@@ -23,6 +23,7 @@ public class ArticleSource {
     private String title;          // nếu cần đặt tên nguồn
     private String description;
 
+
     // Listing (trang danh sách)
     private String url;           // URL listing (ví dụ 1 chuyên mục của Vietnamnet)
     private String linkSelector;  // CSS để lấy link bài chi tiết từ listing

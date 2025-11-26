@@ -8,6 +8,13 @@ import {
 
 export interface UseAdminArticlesOptions {
     initialPageSize?: number;
+    page: number;
+    size: number;
+    keyword?: string;
+    categoryId?: number;
+    status?: string;
+    fromDate?: string; // 'YYYY-MM-DD'
+    toDate?: string;
 }
 
 export interface UseAdminArticlesResult {
@@ -41,8 +48,9 @@ export interface UseAdminArticlesResult {
  * Hook quản lý search + phân trang cho danh sách Article (đã crawl).
  */
 export function useAdminArticles(
-    options: UseAdminArticlesOptions = {}
-): UseAdminArticlesResult {
+    options: UseAdminArticlesOptions = {page: 0, size: 0}
+): UseAdminArticlesResult  {
+    const { initialPageSize, categoryId, status, fromDate, toDate } = options;
     const [articles, setArticles] = useState<ArticleListItem[]>([]);
     const [totalElements, setTotalElements] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -88,8 +96,22 @@ export function useAdminArticles(
                 setLoading(true);
                 setError(null);
 
+                console.log('[useAdminArticles] params', {
+                    keyword: searchTerm,
+                    categoryId,
+                    status,
+                    fromDate,
+                    toDate,
+                    page,
+                    size: pageSize,
+                });
+
                 const response: PageResponse<ArticleListItem> = await fetchArticles({
                     keyword: searchTerm,
+                    categoryId,
+                    status,
+                    fromDate,
+                    toDate,
                     page,
                     size: pageSize,
                 });
@@ -118,7 +140,8 @@ export function useAdminArticles(
             cancelled = true;
             abortController.abort();
         };
-    }, [searchTerm, page, pageSize]);
+    }, [searchTerm, categoryId, status, fromDate, toDate, page, pageSize]);
+
 
     return {
         articles,

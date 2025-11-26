@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface NavIconProps {
     children: React.ReactNode;
@@ -9,7 +10,8 @@ interface NavIconProps {
 
 const NavIcon: React.FC<NavIconProps> = ({ children, tooltip, isActive, onClick }) => (
     <div className="group relative flex justify-center">
-        <button 
+        <button
+            type="button"
             onClick={onClick}
             className={`nav-icon ${isActive ? 'nav-icon-active' : 'nav-icon-inactive'}`}
         >
@@ -22,78 +24,205 @@ const NavIcon: React.FC<NavIconProps> = ({ children, tooltip, isActive, onClick 
 );
 
 const UserAvatar = () => (
-    <img 
-        className="h-8 w-8 rounded-full object-cover" 
-        src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=50&q=80" 
-        alt="User avatar" 
+    <img
+        className="h-8 w-8 rounded-full object-cover"
+        src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=50&q=80"
+        alt="User avatar"
     />
 );
 
 interface SidebarProps {
-    activeView: string;
-    setActiveView: (view: string) => void;
     onSearchClick: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, onSearchClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onSearchClick }) => {
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    // map pathname -> view name để tô active icon
+    const currentView = (() => {
+        const path = location.pathname || '';
+
+        if (path.startsWith('/admin/contents')) return 'contents';
+        if (path.startsWith('/admin/categories')) return 'categories';
+        if (path.startsWith('/admin/bots')) return 'bots';
+        if (path.startsWith('/admin/logs')) return 'logs';
+        // default: dashboard (/admin/news, /admin, v.v.)
+        return 'dashboard';
+    })();
+
     return (
         <aside className="w-20 bg-white/80 backdrop-blur-lg flex flex-col items-center py-6 space-y-6 border-r border-gray-200/80 sticky top-0 h-screen z-20">
-            {/* Logo */}
-            <div className="p-2 rounded-lg bg-gray-800 text-white shadow-lg">
-                 <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                 </svg>
-            </div>
-
-            {/* Global Search Trigger */}
-            <div className="w-10 border-b border-gray-200 pb-4 flex justify-center">
-                 <button 
-                    onClick={onSearchClick}
-                    className="p-2 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all"
-                    title="Search (Cmd+K)"
+            {/* Logo + search */}
+            <div className="flex flex-col items-center space-y-4">
+                {/* Logo bấm về /admin/news */}
+                <button
+                    type="button"
+                    onClick={() => navigate('/admin/news')}
+                    className="h-10 w-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-black tracking-tight shadow-sm hover:bg-gray-800 transition-colors"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    VN
+                </button>
+
+                {/* Search button */}
+                <button
+                    type="button"
+                    onClick={onSearchClick}
+                    className="p-3 rounded-2xl bg-gray-100 hover:bg-gray-200 transition-colors"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-gray-500"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <circle cx="11" cy="11" r="6" />
+                        <line x1="16.5" y1="16.5" x2="21" y2="21" />
                     </svg>
                 </button>
             </div>
-            
-            {/* Main Navigation */}
+
+            {/* Nav icons chính */}
             <nav className="flex flex-col items-center space-y-4 flex-1 overflow-y-auto w-full no-scrollbar">
-                <NavIcon tooltip="Dashboard" isActive={activeView === 'dashboard'} onClick={() => setActiveView('dashboard')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-                </NavIcon>
-                <NavIcon tooltip="Contents" isActive={activeView === 'contents'} onClick={() => setActiveView('contents')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                </NavIcon>
-                <NavIcon tooltip="Categories" isActive={activeView === 'categories'} onClick={() => setActiveView('categories')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-                </NavIcon>
-                 <NavIcon tooltip="Crawler Bots" isActive={activeView === 'bots'} onClick={() => setActiveView('bots')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                </NavIcon>
-                <NavIcon tooltip="Crawler Logs" isActive={activeView === 'logs'} onClick={() => setActiveView('logs')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                {/* Dashboard */}
+                <NavIcon
+                    tooltip="Dashboard"
+                    isActive={currentView === 'dashboard'}
+                    onClick={() => navigate('/admin/news')}
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M3 11L12 3l9 8" />
+                        <path d="M5 10v10h5v-6h4v6h5V10" />
                     </svg>
                 </NavIcon>
-                <NavIcon tooltip="Teams" isActive={activeView === 'teams'} onClick={() => setActiveView('teams')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.125-1.274-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.125-1.274.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+
+                {/* Contents */}
+                <NavIcon
+                    tooltip="Contents"
+                    isActive={currentView === 'contents'}
+                    onClick={() => navigate('/admin/contents')}
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+                        <line x1="8" y1="9" x2="16" y2="9" />
+                        <line x1="8" y1="13" x2="13" y2="13" />
+                    </svg>
                 </NavIcon>
-                <NavIcon tooltip="Billing" isActive={activeView === 'billing'} onClick={() => setActiveView('billing')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+
+                {/* Categories */}
+                <NavIcon
+                    tooltip="Categories"
+                    isActive={currentView === 'categories'}
+                    onClick={() => navigate('/admin/categories')}
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                </NavIcon>
+
+                {/* Crawler Bots */}
+                <NavIcon
+                    tooltip="Crawler Bots"
+                    isActive={currentView === 'bots'}
+                    onClick={() => navigate('/admin/bots')}
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <rect x="9" y="3" width="6" height="4" rx="1" />
+                        <rect x="4" y="7" width="16" height="10" rx="2" />
+                        <path d="M8 21h2" />
+                        <path d="M14 21h2" />
+                        <path d="M7 11h.01" />
+                        <path d="M17 11h.01" />
+                    </svg>
+                </NavIcon>
+
+                {/* Crawler Logs */}
+                <NavIcon
+                    tooltip="Crawler Logs"
+                    isActive={currentView === 'logs'}
+                    onClick={() => navigate('/admin/logs')}
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M11 3h7a2 2 0 0 1 2 2v14l-4-2-4 2V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12" />
+                        <path d="M5 7h4" />
+                        <path d="M5 11h3" />
+                    </svg>
                 </NavIcon>
             </nav>
-            
-            {/* Bottom Section */}
-            <div className="mt-auto flex flex-col items-center space-y-4">
-                <div className="w-8 border-t border-gray-200"></div>
-                 <NavIcon tooltip="Settings" isActive={false} onClick={() => alert('Settings clicked!')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                </NavIcon>
-                <div className="pt-2">
-                    <UserAvatar />
-                </div>
+
+            {/* bottom section: settings + avatar */}
+            <div className="flex flex-col items-center space-y-4">
+                <button
+                    type="button"
+                    className="p-3 rounded-2xl bg-gray-100 hover:bg-gray-200 transition-colors"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-gray-500"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 3.6 15a1.65 1.65 0 0 0-1.51-1H2a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 3.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 3.6 1.65 1.65 0 0 0 9.51 2.09H10a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 16 3.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 20.4 8a1.65 1.65 0 0 0 1.51 1H22a2 2 0 0 1 0 4h-.09A1.65 1.65 0 0 0 19.4 15z" />
+                    </svg>
+                </button>
+                <UserAvatar />
             </div>
         </aside>
     );

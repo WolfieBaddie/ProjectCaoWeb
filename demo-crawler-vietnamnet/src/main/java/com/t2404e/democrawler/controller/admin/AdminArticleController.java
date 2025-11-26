@@ -2,14 +2,23 @@ package com.t2404e.democrawler.controller.admin;
 
 import com.t2404e.democrawler.common.ArticleStatus;
 import com.t2404e.democrawler.dto.ArticleListItemDto;
+import com.t2404e.democrawler.dto.DeleteArticleResponse;
 import com.t2404e.democrawler.service.ArticleService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import com.t2404e.democrawler.dto.ArticleDetailDto;
 import com.t2404e.democrawler.dto.UpdateArticleRequest;
+import com.t2404e.democrawler.dto.SeedArticleRequest;
+import jakarta.validation.Valid;
 
+import java.time.LocalDateTime;
+
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/admin/api")
@@ -49,19 +58,34 @@ public class AdminArticleController {
      * GET /admin/api/articles?keyword=abc&categoryId=1&status=PUBLISHED&page=0&size=20
      */
     @GetMapping("/articles")
-    public Page<ArticleListItemDto> searchArticles(
-            @RequestParam(value = "keyword", required = false) String keyword,
-            @RequestParam(value = "categoryId", required = false) Long categoryId,
-            @RequestParam(value = "status", required = false) ArticleStatus status,
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "20") int size
+    public Page<ArticleListItemDto> listArticles(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) ArticleStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime fromDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime toDate
     ) {
+        log.info("[ADMIN] listArticles keyword={} catId={} status={} page={} size={} from={} to={}",
+                keyword, categoryId, status, page, size, fromDate, toDate);
+
+        PageRequest pageable = PageRequest.of(page, size);
+
         return articleService.searchCrawledArticles(
                 keyword,
                 categoryId,
                 status,
-                PageRequest.of(page, size)
+                fromDate,
+                toDate,
+                pageable,
+                size
         );
+
     }
 
     @GetMapping("/articles/{id}")
@@ -72,8 +96,13 @@ public class AdminArticleController {
     @PutMapping("/articles/{id}")
     public ArticleDetailDto updateArticle(
             @PathVariable Long id,
-            @RequestBody UpdateArticleRequest request
+            @Valid @RequestBody UpdateArticleRequest request
     ) {
         return articleService.updateArticle(id, request);
+    }
+
+    @DeleteMapping("/articles/{id}")
+    public DeleteArticleResponse softDeleteArticle(@PathVariable Long id) {
+        return articleService.softDeleteArticle(id);
     }
 }

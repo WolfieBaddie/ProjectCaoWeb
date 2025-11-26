@@ -1,17 +1,24 @@
 package com.t2404e.democrawler.controller.admin;
 import com.t2404e.democrawler.dto.ArticleSourceForm;
+import com.t2404e.democrawler.dto.RunSourceRequest;
 import com.t2404e.democrawler.entity.ArticleSource;
 import com.t2404e.democrawler.messaging.CrawlMessage;
 import com.t2404e.democrawler.messaging.LinkCrawlerProducer;
 import com.t2404e.democrawler.repository.ArticleSourceRepository;
 import com.t2404e.democrawler.service.ArticleSourceService;
+import com.t2404e.democrawler.service.CrawlerAdminSourceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/admin/api")
@@ -20,6 +27,25 @@ public class AdminArticleSourceController {
     private final StringRedisTemplate redis;
     private final ArticleSourceRepository articleSourceRepository;
     private final ArticleSourceService articleSourceService;
+    private final CrawlerAdminSourceService crawlerAdminSourceService;
+
+    public record ArticleSourceSummaryDto(
+            Long id,
+            String name,
+            String baseUrl,
+            String defaultCategorySlug,
+            boolean active
+    ) {
+        public static ArticleSourceSummaryDto fromEntity(ArticleSource src) {
+            return new ArticleSourceSummaryDto(
+                    src.getId(),
+                    src.getTitle(),
+                    src.getUrl(),
+                    src.getArticleCategory() != null ? src.getArticleCategory().getName() : null,
+                    src.getStatus() == 1 // tuỳ bạn định nghĩa
+            );
+        }
+    }
 
     // ====== Seed theo category (href kiểu /chinh-tri). Thêm force để chạy lại.
     // GET /admin/api/seed-category?href=/chinh-tri&sourceId=1[&force=true]
@@ -51,30 +77,16 @@ public class AdminArticleSourceController {
 
     // ====== Seed 1 LISTING cụ thể (ví dụ /chinh-tri/su-kien)
     // GET /admin/api/seed-listing?href=/chinh-tri/su-kien&sourceId=1&categoryId=...&depth=0
-    @GetMapping("/seed-listing")
-    public String seedListing(@RequestParam String href,
-                              @RequestParam Long sourceId,
-                              @RequestParam Long categoryId,
-                              @RequestParam(defaultValue = "0") int depth) {
-
-        // luôn có đúng 1 dấu "/" sau host
-        String url = href.startsWith("http")
-                ? canonical(href)
-                : "https://vietnamnet.vn" + (href.startsWith("/") ? href : "/" + href);
-
-        String slug = slugFirst(url);
-
-        producer.send(new CrawlMessage(
-                CrawlMessage.Kind.LISTING,
-                url,
-                slug,
-                depth,
-                sourceId,
-                categoryId
-        ));
-
-        return "queued LISTING: slug=" + slug + ", url=" + url + ", depth=" + depth;
+    @PostMapping("/{id}/seed-listing")
+    public ResponseEntity<?> seedListing(@PathVariable Long id) {
+        log.info("[ADMIN] seed-listing requested for source={}", id);
+        crawlerAdminSourceService.triggerSeedListingForSource(id);
+        return ResponseEntity.accepted().body(
+                Map.of("status", "ACCEPTED", "sourceId", id)
+        );
     }
+
+
 
     // Api chỉnh sửa trạng thái nguồn crawler
     // PATCH /admin/api/sources/{id}/status?enabled=true|false
@@ -87,6 +99,42 @@ public class AdminArticleSourceController {
 
         src.setStatus(enabled ? 1 : 0);
         articleSourceRepository.save(src);
+    }
+
+    @PostMapping("/{id}/run-full")
+    public ResponseEntity<?> runFull(
+            @PathVariable Long id,
+            @RequestBody(required = false) RunSourceRequest request
+    ) {
+        boolean includeLink = request == null || request.includeLink();
+        boolean includeContent = request == null || request.includeContent();
+
+        log.info("[ADMIN] run-full requested for source={} includeLink={} includeContent={}",
+                id, includeLink, includeContent);
+
+        crawlerAdminSourceService.triggerSeedListingForSource(id);
+
+        return ResponseEntity.accepted().body(
+                Map.of(
+                        "status", "ACCEPTED",
+                        "sourceId", id,
+                        "includeLink", includeLink,
+                        "includeContent", includeContent
+                )
+        );
+    }
+
+    @GetMapping("article-sources")
+    public List<ArticleSourceSummaryDto> listSources(
+            @RequestParam(defaultValue = "true") boolean activeOnly
+    ) {
+        List<ArticleSource> entities = activeOnly
+                ? articleSourceRepository.findByStatus(1) // chỉ lấy active
+                : articleSourceRepository.findAll();
+
+        return entities.stream()
+                .map(ArticleSourceSummaryDto::fromEntity)
+                .toList();
     }
 
     // ====== Helpers (giống hệt bản cũ) ======

@@ -2,26 +2,57 @@ package com.t2404e.democrawler.controller.admin;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
 @RequiredArgsConstructor
 @RequestMapping("/admin")
 public class AdminController {
 
-    // Trang dashboard cũ (nếu bạn đang dùng)
-    @GetMapping("/news")
+    /**
+     * TẤT CẢ các route chính của admin SPA đều trả về cùng 1 view "news-dashboard"
+     * trong đó sẽ mount React app, React Router sẽ render đúng component
+     */
+
+    // /admin hoặc /admin/ hoặc /admin/news
+    @GetMapping({ "", "/", "/news" })
     public String newsDashboard() {
-        // view: resources/templates/admin/news-dashboard.html
-        // hoặc index React cho dashboard
+        // templates/admin/news-dashboard.html
         return "admin/news-dashboard";
     }
 
-    // Trang EDIT riêng
+    // /admin/contents
+    @GetMapping("/contents")
+    public String contentsPage() {
+        return "admin/news-dashboard";
+    }
+
+    // /admin/categories
+    @GetMapping("/categories")
+    public String categoriesPage() {
+        return "admin/news-dashboard";
+    }
+
+    // /admin/logs
+    @GetMapping("/logs")
+    public String logsPage() {
+        return "admin/news-dashboard";
+    }
+
+    // /admin/bots
+    @GetMapping("/bots")
+    public String botsPage() {
+        return "admin/news-dashboard";
+    }
+
+    /**
+     * Trang EDIT riêng cho bài viết, nếu ông muốn tách view khác
+     */
     @GetMapping("/news/edit/{id}")
     public String editArticlePage(@PathVariable Long id) {
-        // view: resources/templates/admin/news-edit.html
-        // hoặc cũng có thể dùng chung 1 index React, tuỳ bạn
+        // templates/admin/news-edit.html
         return "admin/news-edit";
     }
 }

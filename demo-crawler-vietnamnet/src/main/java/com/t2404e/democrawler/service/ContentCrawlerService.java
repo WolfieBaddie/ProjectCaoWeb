@@ -30,6 +30,7 @@ public class ContentCrawlerService {
     private final LinkCrawlerProducer producer;
     private final CrawlHelper crawlHelper;
     private final CrawlerLogService crawlerLogService;
+    private final CrawlerBotConfigService botConfigService;
     // ====== PUBLIC API cho Consumer ======
 
     // CATEGORY: lấy link trong nav (swiper) cùng slug -> enqueue LISTING
@@ -49,6 +50,14 @@ public class ContentCrawlerService {
         listings.add(t.getUrl());
 
         for (String l : listings) {
+            if (!botConfigService.isLinkCrawlerEnabled()) {
+                log.info(
+                        "LinkCrawler disabled trong khi handleCategory, dừng enqueue LISTING. slug={} sourceId={}",
+                        slug, t.getSourceId()
+                );
+                break; // thoát vòng for, không đẩy thêm LISTING nữa
+            }
+
             CrawlMessage nx = new CrawlMessage(CrawlMessage.Kind.LISTING, l, slug, t.getDepth()+1, t.getSourceId());
             producer.send(nx);
         }
@@ -113,6 +122,14 @@ public class ContentCrawlerService {
 
            // 1) Đẩy các bài sang queue ARTICLE
            for (String u : articles) {
+               if (!botConfigService.isLinkCrawlerEnabled()) {
+                   log.info(
+                           "LinkCrawler disabled trong khi handleCategory, dừng enqueue LISTING. slug={} sourceId={}",
+                           slug, t.getSourceId()
+                   );
+                   break; // thoát vòng for, không đẩy thêm LISTING nữa
+               }
+
                if (existing.contains(u)) {
                    continue;
                }
@@ -127,20 +144,37 @@ public class ContentCrawlerService {
 
            // 2) Đẩy các listing con (phân trang/nhánh con) để quét cạn
            for (String l : subListings) {
+               if (!botConfigService.isLinkCrawlerEnabled()) {
+                   log.info(
+                           "LinkCrawler disabled trong khi handleCategory, dừng enqueue LISTING. slug={} sourceId={}",
+                           slug, t.getSourceId()
+                   );
+                   break; // thoát vòng for, không đẩy thêm LISTING nữa
+               }
+
                if (!l.equals(t.getUrl())) {
                    producer.send(new CrawlMessage(CrawlMessage.Kind.LISTING, l, slug, t.getDepth() + 1, t.getSourceId()));
                }
            }
 
            // 3) (tuỳ chọn) bắt link "next page"
-           var next = doc.selectFirst("a.next, .pagination a.next, a[rel=next]");
-           if (next != null) {
-               String nxt = crawlHelper.canonical(next.absUrl("href"));
-               if (!nxt.isEmpty() && crawlHelper.isSameHost(nxt) && slug.equals(crawlHelper.slugOf(nxt))) {
-                   producer.send(new CrawlMessage(CrawlMessage.Kind.LISTING, nxt, slug, t.getDepth() + 1, t.getSourceId()));
+           if (botConfigService.isLinkCrawlerEnabled()) {
+               var next = doc.selectFirst("a.next, .pagination a.next, a[rel=next]");
+               if (next != null) {
+                   String nxt = crawlHelper.canonical(next.absUrl("href"));
+                   if (!nxt.isEmpty()
+                           && crawlHelper.isSameHost(nxt)
+                           && slug.equals(crawlHelper.slugOf(nxt))) {
+                       producer.send(new CrawlMessage(
+                               CrawlMessage.Kind.LISTING,
+                               nxt,
+                               slug,
+                               t.getDepth() + 1,
+                               t.getSourceId()
+                       ));
+                   }
                }
            }
-
 
            crawlerLogService.infoLink(
                    "LISTING OK url=" + t.getUrl(),

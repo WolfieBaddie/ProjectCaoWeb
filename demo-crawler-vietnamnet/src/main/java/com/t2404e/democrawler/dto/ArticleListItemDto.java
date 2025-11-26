@@ -1,5 +1,6 @@
 package com.t2404e.democrawler.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.t2404e.democrawler.common.ArticleStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,5 +28,8 @@ public class ArticleListItemDto {
 
     // hiển thị tên category cho tiện
     private String categoryName;
-    private LocalDateTime created_at;
+
+    // map từ Article.created_at/createdAt -> JSON field "createdAt"
+    @JsonProperty("createdAt")
+    private LocalDateTime createdAt;
 }

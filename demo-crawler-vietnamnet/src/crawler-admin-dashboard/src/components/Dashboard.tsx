@@ -29,34 +29,6 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ activeCommand, onEditArticle }) => {
     const schedulerRef = useRef<HTMLDivElement>(null);
 
-    const {
-        articles,
-        totalElements,
-        totalPages,
-        page,
-        pageSize,
-        loading,
-        error,
-        searchTerm,
-        setSearchTerm,
-        setPageSize,
-        goPrevPage,
-        goNextPage,
-    } = useAdminArticles({initialPageSize: 10});
-
-    useEffect(() => {
-        if (!articles) return;
-
-        // Log full list bài viết để xem categoryName từng bài
-        console.log(
-            '[DEBUG] Articles from API:',
-            (articles as ArticleListItem[]).map((a) => ({
-                id: a.id,
-                title: a.title,
-                categoryName: a.categoryName,
-            }))
-        );
-    }, [articles]);
 
     // filter local: category + crawl time
     const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -76,8 +48,50 @@ const Dashboard: React.FC<DashboardProps> = ({ activeCommand, onEditArticle }) =
 
     const {categories, loading: loadingCategories} = useArticleCategories();
 
-    const [editingArticleId, setEditingArticleId] = useState<number | null>(null);
-    const [isEditOpen, setIsEditOpen] = useState(false);
+    const resolvedCategoryId = useMemo(() => {
+        if (selectedCategory === 'ALL') return undefined;
+        const cat = categories.find((c) => c.name === selectedCategory);
+        return cat ? cat.id : undefined;
+    }, [selectedCategory, categories]);
+
+    const {
+        articles,
+        totalElements,
+        totalPages,
+        page,
+        pageSize,
+        loading,
+        error,
+        searchTerm,
+        setSearchTerm,
+        setPageSize,
+        goPrevPage,
+        goNextPage,
+    } = useAdminArticles({
+        page: 0, size: 0,
+        initialPageSize: 10,
+        categoryId: resolvedCategoryId,
+        status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined
+    });
+
+
+    useEffect(() => {
+        if (!articles) return;
+
+        // Log full list bài viết để xem categoryName từng bài
+        console.log(
+            '[DEBUG] Articles from API:',
+            (articles as ArticleListItem[]).map((a) => ({
+                id: a.id,
+                title: a.title,
+                categoryName: a.categoryName,
+                date: a.createdAt
+            }))
+        );
+    }, [articles]);
+
 
     // scroll đến scheduler nếu được trigger từ command
     useEffect(() => {
@@ -103,9 +117,9 @@ const Dashboard: React.FC<DashboardProps> = ({ activeCommand, onEditArticle }) =
     // áp filter local lên articles của page hiện tại
     const filteredArticles: ArticleListItem[] = useMemo(() => {
         return (articles as ArticleListItem[]).filter((a) => {
-            // 1) Filter theo STATUS (nếu bạn đã có selectedStatus)
-            if (selectedCategory !== 'ALL') {
-                if (!a.categoryName || a.categoryName !== selectedCategory) {
+            // 1) Filter theo STATUS
+            if (selectedStatus !== 'ALL') {
+                if (!a.status || a.status !== selectedStatus) {
                     return false;
                 }
             }
@@ -117,9 +131,12 @@ const Dashboard: React.FC<DashboardProps> = ({ activeCommand, onEditArticle }) =
                 }
             }
 
-            // 3) Filter theo CREATED_AT (chính là trường created_at trong DB)
-            if ((fromDate || toDate) && (a as any).createdAt) {
-                const createdDate = String((a as any).createdAt).substring(0, 10); // "YYYY-MM-DD"
+            // 3) Filter theo CREATED_AT (ngày tạo / ngày crawl)
+            if (fromDate || toDate) {
+                // nếu đã chọn khoảng ngày mà bài không có createdAt -> loại luôn
+                if (!a.createdAt) return false;
+
+                const createdDate = String(a.createdAt).substring(0, 10); // "YYYY-MM-DD"
 
                 if (fromDate && createdDate < fromDate) return false;
                 if (toDate && createdDate > toDate) return false;
@@ -128,6 +145,7 @@ const Dashboard: React.FC<DashboardProps> = ({ activeCommand, onEditArticle }) =
             return true;
         });
     }, [articles, selectedStatus, selectedCategory, fromDate, toDate]);
+
 
 
     // thống kê
@@ -170,15 +188,6 @@ const Dashboard: React.FC<DashboardProps> = ({ activeCommand, onEditArticle }) =
         // TODO: sau này gọi API đổi status, rồi refetch()
     };
 
-    const handleOpenEdit = (articleId: number) => {
-        setEditingArticleId(articleId);
-        setIsEditOpen(true);
-    };
-
-    const handleCloseEdit = () => {
-        setIsEditOpen(false);
-        setEditingArticleId(null);
-    };
 
 // Sau khi update thành công
     const handleEditSuccess = (updated: ArticleDetail) => {

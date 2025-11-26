@@ -16,6 +16,15 @@ const SchedulerCard: React.FC = () => {
         saveSchedule,
         isScheduleSaving,
         lastScheduleSavedAt,
+
+        // seed listing
+        sources,
+        loadingSources,
+        selectedSourceIds,
+        setSelectedSourceIds,
+        runSeedListingNow,
+        isSeedListingRunning,
+        lastSeedListingMessage,
     } = useCrawlerScheduler();
 
     const handleScheduleSubmit: React.FormEventHandler = async (e) => {
@@ -294,7 +303,7 @@ const SchedulerCard: React.FC = () => {
                 ${
                                 isScheduleSaving || scheduleDisabled
                                     ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                                    : 'bg-sky-600 text-white hover:bg-sky-700'
+                                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
                             }
               `}
                         >
@@ -303,6 +312,92 @@ const SchedulerCard: React.FC = () => {
                     </div>
                 </div>
             </form>
+            {/* MANUAL SEED LISTING SECTION */}
+            <div className="mt-6 border-t border-slate-100 pt-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+                    <div>
+                        <p className="text-sm font-semibold text-slate-800">
+                            Chạy seedListing theo ArticleSource
+                        </p>
+                        <p className="text-[11px] text-slate-500 max-w-md">
+                            Chọn nguồn tin đã cấu hình trong database. Khi bấm chạy, backend sẽ
+                            đẩy job CATEGORY cho từng nguồn (ví dụ /chinh-tri), sau đó hệ thống
+                            tự quét LISTING &amp; ARTICLE như luồng bình thường.
+                        </p>
+                    </div>
+                    {loadingSources && (
+                        <span className="text-[11px] text-slate-400">
+                            Đang tải danh sách nguồn...
+                        </span>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                    <div className="md:col-span-2">
+                        <div className="flex flex-wrap gap-2">
+                            {sources.map((s) => {
+                                const checked = selectedSourceIds.includes(s.id);
+                                return (
+                                    <button
+                                        key={s.id}
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedSourceIds(
+                                                checked
+                                                    ? selectedSourceIds.filter((id) => id !== s.id)
+                                                    : [...selectedSourceIds, s.id]
+                                            );
+                                        }}
+                                        className={`px-3 py-1 rounded-full text-[11px] border transition ${
+                                            checked
+                                                ? 'bg-sky-600 text-white border-sky-600'
+                                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        #{s.id} · {s.name}
+                                        {s.defaultCategorySlug && (
+                                            <span className="ml-1 text-[10px] text-slate-200">
+                                                · {s.defaultCategorySlug}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                            {!loadingSources && sources.length === 0 && (
+                                <span className="text-[11px] text-slate-400">
+                                    Chưa có ArticleSource nào trong database.
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex items-start md:items-center justify-start md:justify-end">
+                        <button
+                            type="button"
+                            onClick={() => runSeedListingNow()}
+                            disabled={
+                                isSeedListingRunning || selectedSourceIds.length === 0
+                            }
+                            className={`inline-flex items-center rounded-lg px-4 py-2 text-xs font-semibold shadow-sm transition
+                                ${
+                                isSeedListingRunning || selectedSourceIds.length === 0
+                                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            }`}
+                        >
+                            {isSeedListingRunning
+                                ? 'Đang gửi job seedListing...'
+                                : 'Chạy seedListing với nguồn đã chọn'}
+                        </button>
+                    </div>
+                </div>
+
+                {lastSeedListingMessage && (
+                    <p className="text-[11px] text-emerald-600 mt-1">
+                        {lastSeedListingMessage}
+                    </p>
+                )}
+            </div>
         </div>
     );
 };

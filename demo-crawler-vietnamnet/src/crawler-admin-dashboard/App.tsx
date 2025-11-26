@@ -125,14 +125,15 @@ const App: React.FC = () => {
         showToast('Configuration saved successfully!');
     };
 
+    const handleSearchClick = useCallback(() => {
+        setIsSearchOpen(true);
+    }, []);
+
+
     return (
         <div className="flex min-h-screen bg-[#F7F7F8] text-gray-800 font-sans">
             {/* Sidebar điều hướng bằng React Router */}
-            <Sidebar
-                activePath={location.pathname}               // ⚠️ cần sửa Sidebar nhận prop này
-                onNavigate={handleNavigation}                // thay vì setActiveView
-                onSearchClick={() => setIsSearchOpen(true)}
-            />
+            <Sidebar onSearchClick={handleSearchClick} />
 
             <main className="flex-1 p-4 sm:p-6 lg:p-8">
                 <div className="w-full bg-white rounded-3xl shadow-sm p-6 lg:p-8">

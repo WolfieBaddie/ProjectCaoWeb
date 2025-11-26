@@ -1,11 +1,15 @@
 package com.t2404e.democrawler.service;
 
+import com.t2404e.democrawler.dto.SeedArticleRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.t2404e.democrawler.common.ArticleStatus;
-import com.t2404e.democrawler.dto.ArticleListItemDto;
-import com.t2404e.democrawler.dto.UpdateArticleRequest;
+import com.t2404e.democrawler.dto.*;
 import com.t2404e.democrawler.entity.Article;
+import com.t2404e.democrawler.entity.ArticleCategory;
+import com.t2404e.democrawler.exception.ArticleOperationException;
+import com.t2404e.democrawler.repository.ArticleCategoryRepository;
 import com.t2404e.democrawler.repository.ArticleRepository;
+import io.lettuce.core.dynamic.annotation.Param;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,9 +26,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
-import com.t2404e.democrawler.dto.ArticleDetailDto;
-import com.t2404e.democrawler.dto.ArticleImageDto;
 import com.t2404e.democrawler.entity.ArticleImage;
 
 
@@ -37,6 +40,7 @@ public class ArticleService {
     private static final Duration SEARCH_CACHE_TTL = Duration.ofSeconds(30);
 
     private final ArticleRepository articleRepository;
+    private final ArticleCategoryRepository articleCategoryRepository;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -85,6 +89,45 @@ public class ArticleService {
                 .build();
     }
 
+    // ==== Tạo mới article từ seed-article (UI) ====
+    @Transactional
+    public ArticleDetailDto createSeedArticle(SeedArticleRequest req) {
+        // 1. Bắt buộc category tồn tại
+        ArticleCategory category = articleCategoryRepository.findById(req.getCategoryId())
+                .orElseThrow(() -> new ArticleOperationException(
+                        "Danh mục không tồn tại",
+                        Map.of("categoryId",
+                                "Không tìm thấy danh mục với id = " + req.getCategoryId())
+                ));
+
+        // 2. Map DTO -> Entity
+        Article article = new Article();
+        article.setArticleCategory(category);
+        article.setUrl(req.getUrl().trim());
+        article.setTitle(req.getTitle().trim());
+        article.setDescription(req.getDescription());
+        article.setContent(req.getContent());
+        article.setImageUrl(req.getImageUrl());
+
+        // Seed từ UI → isCrawled = false
+        article.setCrawled(false);
+
+        // Nếu không truyền status thì default là DRAFT
+        ArticleStatus status =
+                (req.getStatus() != null) ? req.getStatus() : ArticleStatus.DRAFT;
+        article.setStatus(status);
+
+        // Nếu entity có created_at / updated_at thì set luôn
+        article.setCreated_at(LocalDateTime.now());
+        article.setUpdated_at(LocalDateTime.now());
+
+        Article saved = articleRepository.save(article);
+
+        // 3. Trả về ArticleDetailDto cho UI dùng lại chung format
+        return getArticleDetail(saved.getId());
+    }
+
+
     // ==== Update article từ form UI ====
     @Transactional
     public ArticleDetailDto updateArticle(Long id, UpdateArticleRequest req) {
@@ -116,6 +159,36 @@ public class ArticleService {
         return getArticleDetail(saved.getId());
     }
 
+    // ==== Soft delete article (xóa mềm) ====
+    @Transactional
+    public DeleteArticleResponse softDeleteArticle(Long id) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() ->
+                        new ArticleOperationException(
+                                "Bài viết không tồn tại",
+                                Map.of("id", "Không tìm thấy bài viết với id = " + id)
+                        )
+                );
+
+        if (article.getStatus() == ArticleStatus.DELETED) {
+            // Đã xóa rồi mà vẫn gọi xóa nữa → xem như lỗi nghiệp vụ
+            throw new ArticleOperationException(
+                    "Bài viết đã bị xóa trước đó",
+                    Map.of("id", "Bài viết đã ở trạng thái DELETED")
+            );
+        }
+
+        article.setStatus(ArticleStatus.DELETED);
+        article.setUpdated_at(LocalDateTime.now());
+        articleRepository.save(article);
+
+        return new DeleteArticleResponse(
+                article.getId(),
+                article.getStatus(),
+                "Xóa mềm bài viết thành công"
+        );
+    }
+
 
 
 /**
@@ -129,10 +202,20 @@ public class ArticleService {
             String keyword,
             Long categoryId,
             ArticleStatus status,
-            Pageable pageable
+            LocalDateTime fromDate,
+            LocalDateTime toDate,
+            Pageable pageable,
+            int size
     ) {
         String normalizedKeyword = normalizeKeyword(keyword);
-        String cacheKey = buildSearchCacheKey(normalizedKeyword, categoryId, status, pageable);
+        String cacheKey = buildSearchCacheKey(
+                normalizedKeyword,
+                categoryId,
+                status,
+                fromDate,
+                toDate,
+                pageable
+        );
 
         // 1) Thử lấy từ Redis trước
         Page<ArticleListItemDto> cached = tryReadPageFromCache(cacheKey);
@@ -148,6 +231,8 @@ public class ArticleService {
                 normalizedKeyword,
                 categoryId,
                 status,
+                fromDate,
+                toDate,
                 pageable
         );
 
@@ -166,7 +251,15 @@ public class ArticleService {
     public Page<ArticleListItemDto> getLatestFetchedNews(Pageable pageable) {
         // Nếu bạn muốn chỉ lấy PUBLISHED:
         // return searchCrawledArticles(null, null, ArticleStatus.PUBLISHED, pageable);
-        return searchCrawledArticles(null, null, null, pageable);
+        return searchCrawledArticles(
+                null,
+                null,
+                null,
+                null,
+                null,
+                pageable,
+                pageable.getPageSize()
+        );
     }
 
     // ============================================================
@@ -177,6 +270,8 @@ public class ArticleService {
             String keyword,
             Long categoryId,
             ArticleStatus status,
+            LocalDateTime fromDate,
+            LocalDateTime toDate,
             Pageable pageable
     ) {
         String k = keyword == null ? "" : keyword.trim().toLowerCase();
@@ -186,14 +281,19 @@ public class ArticleService {
 
         String cat = (categoryId == null) ? "none" : String.valueOf(categoryId);
         String st = (status == null) ? "none" : status.name();
+        String fromKey = (fromDate == null) ? "none" : fromDate.toLocalDate().toString();
+        String toKey   = (toDate == null) ? "none" : toDate.toLocalDate().toString();
 
         return "articles:search:isCrawled1:" +
                 "kw:" + kwHash +
                 ":cat:" + cat +
                 ":status:" + st +
+                ":from:" + fromKey +
+                ":to:" + toKey +
                 ":page:" + pageable.getPageNumber() +
                 ":size:" + pageable.getPageSize();
     }
+
 
     private Page<ArticleListItemDto> tryReadPageFromCache(String cacheKey) {
         try {
@@ -275,6 +375,10 @@ public class ArticleService {
                 .crawled(article.isCrawled())
                 .status(article.getStatus())
                 .categoryName(categoryName)
+                .createdAt(article.getCreated_at())
                 .build();
+
+
     }
+
 }
