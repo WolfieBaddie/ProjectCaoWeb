@@ -8,7 +8,7 @@ public record ArticleSourceSummaryDto(
         String baseUrl,
         String defaultCategorySlug,
         boolean active,
-
+        String description,
         Long categoryId,
         String linkSelector,
         String titleSelector,
@@ -25,7 +25,7 @@ public record ArticleSourceSummaryDto(
                 src.getUrl(),
                 src.getArticleCategory() != null ? src.getArticleCategory().getName() : null,
                 src.getStatus() == 1,
-
+                src.getDescription(),
                 src.getArticleCategory() != null ? src.getArticleCategory().getId() : null,
                 src.getLinkSelector(),
                 src.getTitleSelector(),

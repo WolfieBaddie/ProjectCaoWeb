@@ -13,6 +13,8 @@ export interface ArticleSourceSummaryDto {
     defaultCategorySlug: string | null;
     active: boolean;
 
+    description: string | null;
+
     categoryId: number | null;
     linkSelector: string | null;
     titleSelector: string | null;
@@ -22,6 +24,7 @@ export interface ArticleSourceSummaryDto {
     timeSelector: string | null;
     removeSelector: string | null;
 }
+
 
 // === Payload gửi lên cho ArticleSourceForm (backend) ===
 // Map với ArticleSourceForm + ArticleSourceService.mapFormToEntity :contentReference[oaicite:1]{index=1}
@@ -57,6 +60,28 @@ export interface ArticleSourceDto {
     status: number;            // 1 = active, 0 = inactive
 }
 
+async function handleErrorResponse(res: Response): Promise<never> {
+    let message = `HTTP ${res.status} - ${res.statusText || ''}`.trim();
+
+    try {
+        const body = await res.json();
+
+        // GlobalExceptionHandler trả kiểu:
+        // { status, error, message, errors: [{field, message}], timestamp }
+        if (body?.errors && Array.isArray(body.errors) && body.errors.length > 0) {
+            message = body.errors
+                .map((e: any) => `${e.field}: ${e.message}`)
+                .join('\n');
+        } else if (body?.message) {
+            message = body.message;
+        }
+    } catch {
+        // nếu body không phải json thì giữ nguyên message mặc định
+    }
+
+    throw new Error(message);
+}
+
 // ---- 1. Lấy danh sách nguồn crawler ----
 // GET /admin/api/article-sources?activeOnly=true|false :contentReference[oaicite:2]{index=2}
 export async function fetchArticleSources(
@@ -69,7 +94,7 @@ export async function fetchArticleSources(
     });
 
     if (!res.ok) {
-        throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+        return handleErrorResponse(res);
     }
 
     return (await res.json()) as ArticleSourceSummaryDto[];
@@ -93,7 +118,7 @@ export async function seedArticleSource(
     });
 
     if (!res.ok) {
-        throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+        return handleErrorResponse(res);
     }
 
     // backend trả String "Seed article source: ..."
@@ -118,7 +143,7 @@ export async function updateArticleSource(
     });
 
     if (!res.ok) {
-        throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+        return handleErrorResponse(res);
     }
 }
 
@@ -134,7 +159,7 @@ export async function softDeleteArticleSource(id: number): Promise<void> {
     });
 
     if (!res.ok) {
-        throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+        return handleErrorResponse(res);
     }
 }
 
@@ -152,7 +177,7 @@ export async function updateArticleSourceStatus(
     });
 
     if (!res.ok) {
-        throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+        return handleErrorResponse(res);
     }
 }
 
@@ -180,6 +205,6 @@ export async function runFullForSource(
     });
 
     if (!res.ok) {
-        throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+        return handleErrorResponse(res);
     }
 }

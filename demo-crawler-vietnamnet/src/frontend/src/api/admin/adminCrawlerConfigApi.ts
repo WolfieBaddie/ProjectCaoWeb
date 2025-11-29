@@ -1,48 +1,48 @@
 // src/api/admin/adminCrawlerConfigApi.ts
-import { httpClient } from '@/src/api/httpClient.ts';
-
-export type CrawlerBotKind = 'link' | 'content';
-
-export interface CrawlerBotConfig {
+export interface CrawlerBotConfigResponse {
     linkEnabled: boolean;
     contentEnabled: boolean;
 }
 
-// ⛔️ Không cần tự build base URL ở đây nữa nếu httpClient đã có baseURL
-// Nếu chỗ khác còn dùng thì bạn giữ lại, nhưng KHÔNG dùng trong 2 hàm dưới.
+const API_BASE_URL =
+    (import.meta as any).env?.VITE_API_BASE_URL ?? 'http://localhost:8080';
 
-// Nếu vẫn muốn giữ helper:
-function buildUrl(path: string): string {
-    return path; // để nó trả về đúng path tương đối, cho httpClient tự xử lý
+async function handleError(res: Response) {
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status} - ${text}`);
+    }
 }
 
-export async function getCrawlerBotConfig(): Promise<CrawlerBotConfig> {
-    return httpClient.get<CrawlerBotConfig>(
-        buildUrl('/admin/api/crawler-bot-config'),
-    );
+/** Lấy trạng thái hiện tại của 2 bot từ backend */
+export async function getCrawlerBotConfig(): Promise<CrawlerBotConfigResponse> {
+    const res = await fetch(`${API_BASE_URL}/admin/api/crawler-bot-config`, {
+        credentials: 'include',
+    });
+    await handleError(res);
+    return res.json() as Promise<CrawlerBotConfigResponse>;
 }
 
-
-/**
- * Bật/tắt bot crawl link.
- * Backend: POST /admin/api/link?enabled=true|false
- */
+/** Bật / tắt Link Crawler Bot */
 export async function setLinkCrawlerEnabled(enabled: boolean): Promise<void> {
-    await httpClient.post<void>(
-        `/admin/api/link?enabled=${enabled}`,
-        undefined,
+    const res = await fetch(
+        `${API_BASE_URL}/admin/api/link?enabled=${enabled}`,
+        {
+            method: 'POST',
+            credentials: 'include',
+        },
     );
+    await handleError(res);
 }
 
-/**
- * Bật/tắt bot crawl content.
- * Backend: POST /admin/api/content?enabled=true|false
- */
-export async function setContentCrawlerEnabled(
-    enabled: boolean,
-): Promise<void> {
-    await httpClient.post<void>(
-        `/admin/api/content?enabled=${enabled}`,
-        undefined,
+/** Bật / tắt Content Crawler Bot */
+export async function setContentCrawlerEnabled(enabled: boolean): Promise<void> {
+    const res = await fetch(
+        `${API_BASE_URL}/admin/api/content?enabled=${enabled}`,
+        {
+            method: 'POST',
+            credentials: 'include',
+        },
     );
+    await handleError(res);
 }

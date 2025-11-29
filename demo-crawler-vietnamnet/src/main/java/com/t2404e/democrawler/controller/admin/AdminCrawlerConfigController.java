@@ -1,6 +1,5 @@
 package com.t2404e.democrawler.controller.admin;
 
-
 import com.t2404e.democrawler.dto.CrawlerConfigDto;
 import com.t2404e.democrawler.service.CrawlerBotConfigService;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/admin/api")
 public class AdminCrawlerConfigController {
+
     private final CrawlerBotConfigService configService;
 
     // POST /admin/api/link?enabled=true|false
@@ -24,7 +24,7 @@ public class AdminCrawlerConfigController {
         configService.setContentCrawlerEnabled(enabled);
     }
 
-    // ✅ GET /admin/api/crawler-bot-config
+    // GET /admin/api/crawler-bot-config
     @GetMapping("/crawler-bot-config")
     public CrawlerConfigDto getConfig() {
         return new CrawlerConfigDto(

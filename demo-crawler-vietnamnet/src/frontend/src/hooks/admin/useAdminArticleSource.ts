@@ -18,7 +18,7 @@ export interface ArticleSource {
     name: string;
     url: string;
     categoryId: string;
-
+    description: string;
     linkSelector: string;
     titleSelector: string;
     descriptionSelector: string;
@@ -34,17 +34,18 @@ function mapDtoToArticleSource(dto: ArticleSourceSummaryDto): ArticleSource {
     return {
         id: String(dto.id),
         name: dto.name,
+        description: dto.description ?? '',          // <<< THÊM
         url: dto.baseUrl,
-        // tạm thời map defaultCategorySlug vào categoryId (sau này chuyển sang id thật)
-        categoryId: dto.defaultCategorySlug ?? '',
+        categoryId: dto.categoryId != null ? String(dto.categoryId) : '',
 
         linkSelector: dto.linkSelector ?? '',
         titleSelector: dto.titleSelector ?? '',
         descriptionSelector: dto.descriptionSelector ?? '',
         contentSelector: dto.contentSelector ?? '',
         imageSelector: dto.imageSelector ?? '',
-        removalSelector: dto.removeSelector ?? '',
         timeSelector: dto.timeSelector ?? '',
+        removalSelector: dto.removeSelector ?? '',
+
         enabled: dto.active,
     };
 }
@@ -52,14 +53,11 @@ function mapDtoToArticleSource(dto: ArticleSourceSummaryDto): ArticleSource {
 // Map ArticleSource (form bên FE) -> ArticleSourceFormPayload để gửi backend
 function mapFormToPayload(source: ArticleSource): ArticleSourceFormPayload {
     return {
-        // ⚠⚠⚠ IMPORTANT:
-        // Ở đây giả định categoryId bên FE là "số" (id thật) hoặc string số.
-        // Nếu hiện tại bạn đang dùng 'cat_1', 'cat_2' thì cần sửa lại type
-        // và dropdown để lưu đúng id: number của ArticleCategory. :contentReference[oaicite:9]{index=9}
         categoryId: Number(source.categoryId),
 
         title: source.name,
-        description: null,
+        description: source.description || null,   // <<< SỬA Ở ĐÂY
+
         url: source.url,
 
         listingSelector: source.linkSelector,

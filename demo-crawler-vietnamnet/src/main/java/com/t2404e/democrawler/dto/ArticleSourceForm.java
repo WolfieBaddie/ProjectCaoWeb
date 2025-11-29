@@ -5,17 +5,13 @@ import lombok.Data;
 @Data
 
 public class ArticleSourceForm {
-    @NotNull
     @Positive
-    @NotBlank(message = "Danh mục là bắt buộc")
+    @NotNull(message = "Danh mục là bắt buộc")
     private Long categoryId;
 
-    @NotNull
     @Positive
     private Long sourceId;
 
-    // slug chuyên mục: chỉ chữ thường, số, dấu gạch ngang
-    @NotBlank
     @Pattern(regexp = "[a-z0-9\\-]+", message = "Slug chỉ được chứa a-z, 0-9 và dấu '-'")
     private String slug;               // ex: "chinh-tri"
 

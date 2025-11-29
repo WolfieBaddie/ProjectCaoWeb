@@ -68,6 +68,7 @@ const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
     const [formData, setFormData] = useState<ArticleSource>({
         id: '',
         name: '',
+        description: '',
         url: '',
         categoryId: '',           // sẽ set bằng categories[0].id sau khi load
         linkSelector: '',
@@ -123,6 +124,7 @@ const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
         const newSource: ArticleSource = {
             id: '',
             name: 'New Source',
+            description: '',
             url: 'https://',
             categoryId: defaultCategoryId,
             linkSelector: '',
@@ -130,11 +132,10 @@ const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
             descriptionSelector: '',
             contentSelector: '',
             imageSelector: '',
-            timeSelector: '',      // <<< THÊM
+            timeSelector: '',
             removalSelector: '',
             enabled: true,
         };
-
         setSelectedSourceId('NEW');
         setFormData(newSource);
         setIsEditing(true);
@@ -394,6 +395,12 @@ const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
                                                 onChange={handleFormChange}
                                                 placeholder="https://example.com"
                                                 icon={<GlobeIcon />}
+                                            />
+                                            <InputGroup
+                                                label="Description"
+                                                name="description"
+                                                value={formData.description}
+                                                onChange={handleFormChange}
                                             />
                                         </div>
 
