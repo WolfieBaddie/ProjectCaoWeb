@@ -48,7 +48,7 @@ function mapDtoToArticle(dto: ClientArticleListItem): BusinessArticle {
 }
 
 const MainBusinessArticle: React.FC<{ article: BusinessArticle }> = ({ article }) => (
-    <a href={`#article/${article.id}`} className="group block h-full">
+    <a href={`/article/${article.id}`} className="group block h-full">
         <div className="overflow-hidden rounded-lg mb-4">
             <img
                 src={article.imageUrl}
@@ -86,7 +86,7 @@ const MainBusinessArticle: React.FC<{ article: BusinessArticle }> = ({ article }
 
 const SideBusinessArticle: React.FC<{ article: BusinessArticle }> = ({ article }) => (
     <a
-        href={`#article/${article.id}`}
+        href={`/article/${article.id}`}
         className="group py-4 border-b border-gray-200 last:border-b-0 block"
     >
         <div className="flex items-center text-xs text-gray-500 mb-1">
@@ -179,7 +179,7 @@ const BusinessNews: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold text-gray-900">Kinh doanh</h2>
                 <a
-                    href="#"
+                    href="/search?categoryid=3"
                     className="text-sm font-semibold text-red-600 hover:text-red-700 flex items-center"
                 >
                     See all

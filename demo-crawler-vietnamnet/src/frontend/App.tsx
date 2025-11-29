@@ -19,6 +19,8 @@ import Toast from '@/src/components/admin/Toast.tsx';
 import CommandPalette from '@/src/components/admin/CommandPalette.tsx';
 import Client from '@/src/pages/Client.tsx';
 import Login from '@/src/pages/Login.tsx';
+import ArticleDetail from '@/src/components/client/ArticleDetail.tsx';
+import {httpClient, HttpError} from "@/src/api/httpClient.ts";
 
 export interface ActiveCommand {
     view: string;
@@ -199,15 +201,50 @@ const AdminLayout: React.FC = () => {
 
 // ================== ADMIN GUARD ==================
 const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // nếu trong useAdminAuth bạn set 'admin_username' thì xài đúng key này
-    const isLoggedIn = Boolean(localStorage.getItem('admin_username'));
+    const location = useLocation();
+    const [state, setState] = useState<'checking' | 'authed' | 'unauth'>('checking');
 
-    if (!isLoggedIn) {
-        // Chưa đăng nhập -> đẩy về trang login
-        return <Navigate to="/admin/login" replace />;
+    useEffect(() => {
+        let cancelled = false;
+
+        async function checkAuth() {
+            try {
+                await httpClient.get('/admin/me'); // cookie AUTH_TOKEN sẽ được gửi kèm
+                if (!cancelled) setState('authed');
+            } catch (err) {
+                if (cancelled) return;
+
+                // Nếu httpClient có ném HttpError 401 thì coi như chưa login
+                if (err instanceof HttpError && err.status === 401) {
+                    setState('unauth');
+                } else {
+                    // Có thể log ra nếu cần
+                    console.error('check /admin/me error', err);
+                    setState('unauth');
+                }
+            }
+        }
+
+        checkAuth();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    if (state === 'checking') {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-gray-500 text-sm">Checking session…</div>
+            </div>
+        );
     }
 
-    // Đã login → cho render AdminLayout
+    if (state === 'unauth') {
+        // redirect hiện tại để sau login quay lại đúng trang
+        const redirect = encodeURIComponent(location.pathname + location.search);
+        return <Navigate to={`/admin/login?redirect=${redirect}`} replace />;
+    }
+
     return <>{children}</>;
 };
 
@@ -217,7 +254,7 @@ const App: React.FC = () => {
         <Routes>
             {/* Public client site */}
             <Route path="/" element={<Client />} />
-            <Route path="/article/:id" element={<Client />} />
+            <Route path="/article/:id" element={<ArticleDetail />} />
             <Route path="/search" element={<Client />} />
 
             {/* Admin login */}

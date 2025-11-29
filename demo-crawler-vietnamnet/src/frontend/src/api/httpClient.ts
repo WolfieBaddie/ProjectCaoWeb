@@ -14,64 +14,88 @@ export class HttpError extends Error {
     }
 }
 
-async function request<T>(input: string, init: RequestInit = {}): Promise<T> {
+// Chuẩn hoá URL để tránh lỗi 'http://localhost:8080admin/...'
+function buildUrl(url: string): string {
+    // Nếu url đã là absolute (http/https) thì dùng luôn
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+    }
+
+    const base = API_BASE_URL.replace(/\/+$/, ''); // bỏ / ở cuối base
+    const path = url.startsWith('/') ? url : `/${url}`; // thêm / nếu thiếu
+
+    return base + path;
+}
+
+// Chỉ coi là API admin cần bảo vệ nếu: path bắt đầu bằng /admin/ và không phải /admin/login
+function isAdminProtectedApi(url: string): boolean {
+    try {
+        const full = buildUrl(url);
+        const u = new URL(full);
+        const path = u.pathname;
+        return path.startsWith('/admin/') && !path.startsWith('/admin/login');
+    } catch {
+        return false;
+    }
+}
+
+async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
     const headers: HeadersInit = {
         'Content-Type': 'application/json',
         ...(init.headers || {}),
     };
 
-    const res = await fetch(API_BASE_URL + input, {
-        ...init,
-        headers,
-        credentials: 'include', // 👈 gửi cookie (AUTH_TOKEN)
-    });
+    const fullUrl = buildUrl(url);
 
-    // ✅ THÊM: xử lý riêng trường hợp 401 (token hết hạn)
-    if (res.status === 401) {
-        const text = await res.text().catch(() => '');
-        let body: unknown = null;
-        let errorCode: string | null = null;
+    let res: Response;
+    try {
+        res = await fetch(fullUrl, {
+            ...init,
+            headers,
+            credentials: 'include', // => gửi cookie AUTH_TOKEN lên backend
+        });
+    } catch (e) {
+        console.error('Fetch error to', fullUrl, e);
+        throw new HttpError('Không kết nối được tới API backend', 0, null);
+    }
 
-        if (text) {
-            try {
-                body = JSON.parse(text);
-                errorCode =
-                    body && typeof body === 'object'
-                        ? (body as any).error ?? null
-                        : null;
-            } catch {
-                body = text;
-            }
+    const text = await res.text().catch(() => '');
+    let body: any = null;
+
+    if (text) {
+        try {
+            body = JSON.parse(text);
+        } catch {
+            body = text;
         }
+    }
+
+    // 401 chỉ xử lý đặc biệt cho API /admin/** (trừ /admin/login)
+    if (res.status === 401 && isAdminProtectedApi(url)) {
+        const errorCode =
+            body && typeof body === 'object' ? (body as any).error ?? null : null;
 
         if (errorCode === 'TOKEN_EXPIRED') {
-            // Optional: dọn trạng thái login phía FE
+            // Nếu trước đó có dùng admin_username để guard FE thì dọn đi (không đụng đến token)
             try {
                 window.localStorage.removeItem('admin_username');
             } catch {
                 // ignore
             }
 
-            // Đẩy về trang login kèm query "expired=1"
+            // Redirect về trang login admin, báo hết hạn
             window.location.href = '/admin/login?expired=1';
         }
 
-        throw new HttpError('Unauthorized', res.status, body ?? text ?? res.statusText);
+        throw new HttpError(
+            'Unauthorized',
+            res.status,
+            body ?? text ?? res.statusText,
+        );
     }
 
-    // Giữ nguyên logic cũ cho các status khác
+    // Các status lỗi khác (400, 404, 500, 401 non-admin) -> ném HttpError bình thường
     if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        let body: unknown = null;
-
-        if (text) {
-            try {
-                body = JSON.parse(text);
-            } catch {
-                body = text;
-            }
-        }
-
         const message =
             (body && typeof body === 'object'
                 ? (body as any).message || (body as any).error
@@ -83,32 +107,30 @@ async function request<T>(input: string, init: RequestInit = {}): Promise<T> {
         throw new HttpError(message, res.status, body);
     }
 
-    // nếu body rỗng (204) thì trả undefined
-    const contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
+    // Không có body (204, v.v.)
+    if (!text) {
         return undefined as T;
     }
 
-    return (await res.json()) as T;
+    return body as T;
 }
 
 export const httpClient = {
-    get:    <T>(url: string) => request<T>(url, { method: 'GET' }),
-    post:   <T>(url: string, body?: unknown) =>
+    get: <T>(url: string) => request<T>(url, { method: 'GET' }),
+    post: <T>(url: string, body?: unknown) =>
         request<T>(url, {
             method: 'POST',
             body: body !== undefined ? JSON.stringify(body) : undefined,
         }),
-    put:    <T>(url: string, body?: unknown) =>
+    put: <T>(url: string, body?: unknown) =>
         request<T>(url, {
             method: 'PUT',
             body: body !== undefined ? JSON.stringify(body) : undefined,
         }),
-    patch:  <T>(url: string, body?: unknown) =>
+    patch: <T>(url: string, body?: unknown) =>
         request<T>(url, {
             method: 'PATCH',
             body: body !== undefined ? JSON.stringify(body) : undefined,
         }),
-    delete: <T>(url: string) =>
-        request<T>(url, { method: 'DELETE' }),
+    delete: <T>(url: string) => request<T>(url, { method: 'DELETE' }),
 };

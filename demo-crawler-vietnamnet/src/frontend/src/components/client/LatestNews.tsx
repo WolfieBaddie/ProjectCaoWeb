@@ -19,7 +19,7 @@ interface LatestArticle {
 }
 
 const ArticleCard: React.FC<{ article: LatestArticle }> = ({ article }) => (
-    <a href={`#article/${article.id}`} className="group block">
+    <a href={`/article/${article.id}`} className="group block">
         <div className="overflow-hidden rounded-lg mb-4">
             <img
                 src={article.imageUrl}

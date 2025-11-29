@@ -3,8 +3,10 @@ package com.t2404e.democrawler.auth.security;
 import com.t2404e.democrawler.entity.Account;
 import com.t2404e.democrawler.repository.AccountRepository;
 import com.t2404e.democrawler.service.JwtService;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -13,9 +15,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-// 👇 thêm import này
-import io.jsonwebtoken.ExpiredJwtException;
 
 import java.io.IOException;
 import java.util.List;
@@ -34,51 +33,76 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String token = null;
+        String path = request.getServletPath();
 
-        // 1) Ưu tiên đọc từ header (nếu muốn giữ tương thích Postman)
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
+        // 1. Bỏ qua toàn bộ request KHÔNG phải /admin/**
+        if (!path.startsWith("/admin/")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        // 2) Nếu không có header -> đọc từ cookie AUTH_TOKEN
-        if (token == null && request.getCookies() != null) {
-            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
-                if ("AUTH_TOKEN".equals(cookie.getName())) {
-                    token = cookie.getValue();
-                    break;
-                }
-            }
+        // 2. Bỏ qua chính /admin/login để luôn login lại được
+        if ("/admin/login".equals(path)) {
+            filterChain.doFilter(request, response);
+            return;
         }
+
+        String token = resolveToken(request);
 
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 String username = jwtService.extractUsername(token);
 
-                Account admin = accountRepository.findByUsername(username).orElse(null);
-                if (admin != null && jwtService.isTokenValid(token, admin)) {
-                    var authorities = List.of(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                Account account = accountRepository
+                        .findByUsername(username)
+                        .orElse(null);
 
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(admin, null, authorities);
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                if (account != null && jwtService.isTokenValid(token, account)) {
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(
+                                    account,
+                                    null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+                            );
+                    SecurityContextHolder.getContext().setAuthentication(auth);
                 }
 
             } catch (ExpiredJwtException ex) {
-                // ✅ Token hết hạn → trả 401 + mã lỗi cho FE biết
+                // Token HẾT HẠN -> trả 401 + mã lỗi rõ ràng cho frontend
                 log.warn("JWT đã hết hạn: {}", ex.getMessage());
+                SecurityContextHolder.clearContext();
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json;charset=UTF-8");
                 response.getWriter().write("{\"error\":\"TOKEN_EXPIRED\"}");
-                return; // dừng filter chain, không đi tiếp nữa
+                return; // dừng filter, không đi tiếp nữa
 
             } catch (Exception ex) {
-                // Các lỗi JWT khác: sai signature, sai format,...
+                // Các lỗi JWT khác: signature sai, format lỗi...
                 log.warn("JWT không hợp lệ: {}", ex.getMessage());
+                // Không ghi response ở đây, để Spring Security xử lý (có thể trả 401)
             }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String resolveToken(HttpServletRequest request) {
+        // Ưu tiên Authorization: Bearer ... (để test Postman)
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+
+        // Nếu không có header thì lấy từ cookie AUTH_TOKEN
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie c : cookies) {
+                if ("AUTH_TOKEN".equals(c.getName())) {
+                    return c.getValue();
+                }
+            }
+        }
+
+        return null;
     }
 }

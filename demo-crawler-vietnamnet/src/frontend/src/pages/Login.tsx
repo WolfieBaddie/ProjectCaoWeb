@@ -16,20 +16,19 @@ const Login: React.FC = () => {
     const hasBasicError =
         touched && (username.trim().length === 0 || password.trim().length === 0);
 
-    // ✅ THÊM: check query ?expired=1
+    //THÊM: check query ?expired=1
     const searchParams = new URLSearchParams(location.search);
     const isExpired = searchParams.get('expired') === '1';
+    const redirect = searchParams.get('redirect') || '/admin/news';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setTouched(true);
-
         if (!username.trim() || !password.trim()) return;
 
         const res = await login(username.trim(), password);
         if (res) {
-            // Đăng nhập ok → chuyển sang dashboard admin (ví dụ /admin/news)
-            navigate('/admin/news');
+            navigate(redirect, { replace: true });
         }
     };
 
@@ -47,7 +46,6 @@ const Login: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-                    {/* ✅ THÊM: thông báo hết hạn token */}
                     {isExpired && (
                         <div className="text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg">
                             Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.

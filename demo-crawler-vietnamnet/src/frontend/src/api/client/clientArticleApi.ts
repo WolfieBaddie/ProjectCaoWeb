@@ -39,6 +39,22 @@ interface ClientArticle {
     readTime: string;
 }
 
+export interface ClientArticleDetail {
+    id: number;
+    title: string;
+    description: string | null;
+    content: string | null;        // HTML nội dung bài viết
+    imageUrl: string | null;
+    categoryId: number;
+    categoryName: string;
+    createdAt: string;
+    sourceName?: string | null;
+    sourceLogoUrl?: string | null;
+    authorName?: string | null;
+    authorAvatarUrl?: string | null;
+    readTime?: string | null;      // nếu backend trả, không có thì mình tự tính/đặt default
+}
+
 function formatTimestamp(iso: string | null | undefined): string {
     if (!iso) return '';
     const d = new Date(iso);
@@ -96,6 +112,15 @@ export async function fetchLatestPublicArticles(
 ): Promise<ClientArticleListItem[]> {
     return httpClient.get<ClientArticleListItem[]>(
         '/client/api/articles/latest'
+    );
+}
+
+// GET /client/api/articles/{id}
+export async function getPublicArticleDetail(
+    id: number | string,
+): Promise<ClientArticleDetail> {
+    return httpClient.get<ClientArticleDetail>(
+        `/client/api/articles/${id}`,
     );
 }
 

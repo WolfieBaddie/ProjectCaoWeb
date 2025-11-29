@@ -1,4 +1,5 @@
 package com.t2404e.democrawler.auth.config;
+
 import com.t2404e.democrawler.auth.security.JwtAuthenticationFilter;
 import com.t2404e.democrawler.repository.AccountRepository;
 import com.t2404e.democrawler.service.JwtService;
@@ -18,35 +19,40 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
     private final JwtService jwtService;
     private final AccountRepository accountRepository;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
         JwtAuthenticationFilter jwtFilter =
                 new JwtAuthenticationFilter(jwtService, accountRepository);
 
         http
+                // ✅ dùng cấu hình CORS ở WebCorsConfig
                 .cors(Customizer.withDefaults())
+
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(sm ->
+                        sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .authorizeHttpRequests(auth -> auth
-                        // cho phép không cần login
-                        .requestMatchers("/admin/login").permitAll()
-                        .requestMatchers("/client/**").permitAll()
+                        // ✅ login + swagger không cần token
                         .requestMatchers(
+                                "/admin/login",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
 
-                        // toàn bộ /admin/** chỉ cần có Authentication là được
+                        // ✅ TOÀN BỘ /admin/** cần JWT hợp lệ, KHÔNG check role nữa
                         .requestMatchers("/admin/**").authenticated()
 
-                        // còn lại cho phép
+                        // ✅ còn lại (client/public) free
                         .anyRequest().permitAll()
                 )
-                // Filter đọc JWT từ cookie/header
+                // ✅ đọc JWT từ cookie/header trước Security filter mặc định
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

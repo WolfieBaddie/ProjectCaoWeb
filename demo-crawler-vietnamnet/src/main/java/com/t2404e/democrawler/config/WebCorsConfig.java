@@ -18,14 +18,14 @@ public class WebCorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        // Admin APIs
+        // ✅ Toàn bộ admin (login, me, api...)
         registry.addMapping("/admin/**")
                 .allowedOrigins(ALLOWED_ORIGINS)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);
 
-        // 🔥 Client APIs
+        // ✅ Các API client nếu sau này cần
         registry.addMapping("/client/**")
                 .allowedOrigins(ALLOWED_ORIGINS)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")

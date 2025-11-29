@@ -46,7 +46,7 @@ function mapDtoToArticle(dto: ClientArticleListItem): CurrentArticle {
 
 const CurrentEventArticleCard: React.FC<{ article: CurrentArticle }> = ({ article }) => (
     <a
-        href={`#article/${article.id}`}
+        href={`/article/${article.id}`}
         className="group relative rounded-lg overflow-hidden block"
     >
         <img
@@ -149,7 +149,7 @@ const CurrentEventNews: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold text-gray-900">Thời sự</h2>
                 <a
-                    href="#"
+                    href="/search?categoryid=3"
                     className="text-sm font-semibold text-red-600 hover:text-red-700 flex items-center"
                 >
                     See all

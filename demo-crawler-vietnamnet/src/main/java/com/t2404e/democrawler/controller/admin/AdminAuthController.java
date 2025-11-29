@@ -1,13 +1,17 @@
 package com.t2404e.democrawler.controller.admin;
+
 import com.t2404e.democrawler.dto.AccountAuthResponse;
 import com.t2404e.democrawler.dto.AccountLoginRequest;
+import com.t2404e.democrawler.entity.Account;
 import com.t2404e.democrawler.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
@@ -19,26 +23,49 @@ public class AdminAuthController {
 
     private final AuthService authService;
 
+    /**
+     * Đăng nhập admin:
+     * - Nhận username/password
+     * - Gọi AuthService.login
+     * - Set cookie AUTH_TOKEN (httpOnly) chứa JWT
+     * - Trả về AccountAuthResponse (username + accessToken)
+     */
     @PostMapping("/login")
     public ResponseEntity<AccountAuthResponse> login(
             @Valid @RequestBody AccountLoginRequest request,
             HttpServletResponse response
     ) {
-        // Gọi service sinh JWT
         AccountAuthResponse auth = authService.login(request);
 
-        // Set cookie AUTH_TOKEN cho JwtAuthenticationFilter đọc
+        // Lưu JWT vào cookie AUTH_TOKEN để FE không phải tự lưu token
         ResponseCookie cookie = ResponseCookie.from("AUTH_TOKEN", auth.getAccessToken())
-                .path("/")               // để /admin/** đều dùng được
                 .httpOnly(true)
-                .secure(false)           // true nếu chạy HTTPS
-                .sameSite("None")
-                .maxAge(Duration.ofHours(4))
+                .secure(false)        // để false cho localhost, deploy thật thì để true (https)
+                .path("/")
+                .maxAge(Duration.ofHours(1))
+                .sameSite("Lax")
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        // Vẫn trả về body để FE có username / token nếu muốn dùng
         return ResponseEntity.ok(auth);
+    }
+
+    /**
+     * Check phiên đăng nhập hiện tại.
+     * - Nếu JWT hợp lệ -> trả 200 + username
+     * - Nếu chưa login / token sai -> 401
+     */
+    @GetMapping("/me")
+    public ResponseEntity<AccountAuthResponse> me(
+            @AuthenticationPrincipal Account account
+    ) {
+        if (account == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        AccountAuthResponse res = new AccountAuthResponse();
+        res.setUsername(account.getUsername());
+        return ResponseEntity.ok(res);
     }
 }

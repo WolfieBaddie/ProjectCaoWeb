@@ -51,19 +51,6 @@ const Header: React.FC = () => {
                         : 'opacity-100'
                 } transition-opacity duration-200`}
             >
-              <ul className="flex items-center space-x-6">
-                {NAV_LINKS.map(link => (
-                    <li key={link}>
-                      <a
-                          href={`/search?q=${encodeURIComponent(link)}`}
-                          onClick={e => handleNavClick(e, link)}
-                          className="hover:text-gray-300 text-sm font-medium transition-colors duration-200"
-                      >
-                        {link}
-                      </a>
-                    </li>
-                ))}
-              </ul>
             </nav>
 
             <div className="flex items-center space-x-4">
