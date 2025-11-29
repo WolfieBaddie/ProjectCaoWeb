@@ -1,11 +1,14 @@
 package com.t2404e.democrawler.controller.admin;
+
 import com.t2404e.democrawler.common.ArticleStatus;
 import com.t2404e.democrawler.dto.ArticleCategoryDto;
+import com.t2404e.democrawler.dto.ArticleCategoryPageResponse;
 import com.t2404e.democrawler.dto.UpdateArticleCategoryRequest;
 import com.t2404e.democrawler.entity.ArticleCategory;
 import com.t2404e.democrawler.exception.ArticleOperationException;
 import com.t2404e.democrawler.repository.ArticleCategoryRepository;
 import com.t2404e.democrawler.repository.ArticleRepository;
+import com.t2404e.democrawler.service.ArticleCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,21 +25,38 @@ public class AdminArticleCategoryController {
 
     private final ArticleCategoryRepository articleCategoryRepository;
     private final ArticleRepository articleRepository;
+    private final ArticleCategoryService articleCategoryService;
 
+    // ====== LIST full (không phân trang, nếu vẫn muốn giữ) ======
     @GetMapping
     public List<ArticleCategoryDto> getAllCategories() {
-        List<ArticleCategory> categories =
-                articleCategoryRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
+        return articleCategoryRepository
+                .findByDeletedFalse(Sort.by(Sort.Direction.ASC, "name"))
+                .stream()
+                .map(cat -> {
+                    long cnt = articleRepository
+                            .countByArticleCategoryIdAndStatusNot(cat.getId(), ArticleStatus.DELETED);
 
-        return categories.stream()
-                .map(cat -> ArticleCategoryDto.builder()
-                        .id(cat.getId())
-                        .name(cat.getName())
-                        .build())
+                    return ArticleCategoryDto.builder()
+                            .id(cat.getId())
+                            .name(cat.getName())
+                            .articleCount(cnt)
+                            .build();
+                })
                 .toList();
     }
 
-    // ====== SỬA category ======
+    // ====== LIST phân trang + search theo tên ======
+    @GetMapping("/paging")
+    public ArticleCategoryPageResponse searchCategories(
+            @RequestParam(name = "keyword", required = false, defaultValue = "") String keyword,
+            @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+            @RequestParam(name = "size", required = false, defaultValue = "10") int size
+    ) {
+        return articleCategoryService.searchCategories(keyword, page, size);
+    }
+
+    // ====== UPDATE category ======
     @PutMapping("/{id}")
     @Transactional
     public ArticleCategoryDto updateCategory(
@@ -57,16 +77,22 @@ public class AdminArticleCategoryController {
         }
 
         category.setName(request.getName().trim());
-
         ArticleCategory saved = articleCategoryRepository.save(category);
+
+        // Clear cache vì dữ liệu danh mục đã thay đổi
+        articleCategoryService.clearCategoryCache();
+
+        long cnt = articleRepository
+                .countByArticleCategoryIdAndStatusNot(saved.getId(), ArticleStatus.DELETED);
 
         return ArticleCategoryDto.builder()
                 .id(saved.getId())
                 .name(saved.getName())
+                .articleCount(cnt)
                 .build();
     }
 
-    // ====== XÓA MỀM category + set DELETED cho tất cả article thuộc category ======
+    // ====== SOFT DELETE category ======
     @DeleteMapping("/{id}")
     @Transactional
     public void softDeleteCategory(@PathVariable Long id) {
@@ -83,11 +109,13 @@ public class AdminArticleCategoryController {
             );
         }
 
-        // 1) Xóa mềm trên bảng article_category
         category.setDeleted(true);
         articleCategoryRepository.save(category);
 
-        // 2) Set status DELETED cho tất cả Article có category_id = id
+        // Set DELETED cho toàn bộ article thuộc category này
         articleRepository.updateStatusByCategoryId(id, ArticleStatus.DELETED);
+
+        // Xóa cache
+        articleCategoryService.clearCategoryCache();
     }
 }

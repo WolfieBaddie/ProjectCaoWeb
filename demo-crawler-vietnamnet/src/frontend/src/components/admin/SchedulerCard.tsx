@@ -1,6 +1,6 @@
 // src/components/admin/SchedulerCard.tsx
 import React from 'react';
-import { useCrawlerScheduler } from '../hooks/useCrawlerScheduler.ts';
+import {useCrawlerScheduler} from "@/src/hooks/admin/useCrawlerScheduler.ts";
 
 const SchedulerCard: React.FC = () => {
     const {

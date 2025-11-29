@@ -7,6 +7,7 @@ export interface ArticleCategory {
     id: number;
     name: string;
     deleted?: boolean; // backend có thể không trả, nhưng để sẵn cho future
+    articleCount: number;
 }
 
 export interface ApiErrorResponse {

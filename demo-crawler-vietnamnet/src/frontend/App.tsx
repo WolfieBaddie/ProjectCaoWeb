@@ -1,16 +1,24 @@
+// src/App.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import {
+    Routes,
+    Route,
+    useLocation,
+    useNavigate,
+    Navigate,
+} from 'react-router-dom';
 
-import Toast from '@/src/components/Toast';
-import Sidebar from '@/src/components/Navbar';
-import Dashboard from '@/src/components/Dashboard';
-import BotsView from '@/src/components/BotsView';
-import ContentsView from '@/src/components/ContentsView';
-import CategoriesView from '@/src/components/CategoriesView';
-import LogsView from '@/src/components/LogsView';
-import CommandPalette from '@/src/components/CommandPalette';
 import ArticleEditPage from '@/src/pages/ArticleEditPage.tsx';
 import { CrawlerConfig, CrawlerStatus } from './types';
+import Sidebar from '@/src/components/admin/Navbar.tsx';
+import Dashboard from '@/src/components/admin/Dashboard.tsx';
+import CategoriesView from '@/src/components/admin/CategoriesView.tsx';
+import LogsView from '@/src/components/admin/LogsView.tsx';
+import BotsView from '@/src/components/admin/BotsView.tsx';
+import Toast from '@/src/components/admin/Toast.tsx';
+import CommandPalette from '@/src/components/admin/CommandPalette.tsx';
+import Client from '@/src/pages/Client.tsx';
+import Login from '@/src/pages/Login.tsx';
 
 export interface ActiveCommand {
     view: string;
@@ -27,7 +35,8 @@ const Placeholder = ({ title }: { title: string }) => (
     </div>
 );
 
-const App: React.FC = () => {
+// ================== ADMIN LAYOUT ==================
+const AdminLayout: React.FC = () => {
     const [config, setConfig] = useState<CrawlerConfig>({
         domain: 'https://example.com',
         path: '/news',
@@ -68,7 +77,6 @@ const App: React.FC = () => {
     // map view -> path cho CommandPalette / Sidebar
     const viewToPath: Record<string, string> = {
         dashboard: '/admin/news',
-        contents: '/admin/contents',
         categories: '/admin/categories',
         bots: '/admin/bots',
         logs: '/admin/logs',
@@ -90,8 +98,6 @@ const App: React.FC = () => {
         switch (location.pathname) {
             case '/admin/news':
                 return 'Dashboard';
-            case '/admin/contents':
-                return 'Content Management';
             case '/admin/categories':
                 return 'Categories Management';
             case '/admin/bots':
@@ -109,7 +115,7 @@ const App: React.FC = () => {
             const { name, value } = e.target;
             setConfig(prev => ({ ...prev, [name]: value }));
         },
-        []
+        [],
     );
 
     const handleSelectChange = useCallback(
@@ -117,7 +123,7 @@ const App: React.FC = () => {
             const { name, value } = e.target;
             setConfig(prev => ({ ...prev, [name]: value as CrawlerStatus }));
         },
-        []
+        [],
     );
 
     const handleSave = () => {
@@ -129,10 +135,9 @@ const App: React.FC = () => {
         setIsSearchOpen(true);
     }, []);
 
-
     return (
         <div className="flex min-h-screen bg-[#F7F7F8] text-gray-800 font-sans">
-            {/* Sidebar điều hướng bằng React Router */}
+            {/* Sidebar điều hướng cho admin */}
             <Sidebar onSearchClick={handleSearchClick} />
 
             <main className="flex-1 p-4 sm:p-6 lg:p-8">
@@ -142,23 +147,20 @@ const App: React.FC = () => {
                     </h1>
 
                     <div>
+                        {/* Routes con cho khu vực /admin/* */}
                         <Routes>
                             <Route
-                                path="/admin/news"
+                                path="news"
                                 element={<Dashboard activeCommand={activeCommand} />}
                             />
+                            <Route path="news/edit/:id" element={<ArticleEditPage />} />
                             <Route
-                                path="/admin/news/edit/:id"
-                                element={<ArticleEditPage />}
-                            />
-                            <Route path="/admin/contents" element={<ContentsView />} />
-                            <Route
-                                path="/admin/categories"
+                                path="categories"
                                 element={<CategoriesView activeCommand={activeCommand} />}
                             />
-                            <Route path="/admin/logs" element={<LogsView />} />
+                            <Route path="logs" element={<LogsView />} />
                             <Route
-                                path="/admin/bots"
+                                path="bots"
                                 element={
                                     <BotsView
                                         config={config}
@@ -170,8 +172,11 @@ const App: React.FC = () => {
                                     />
                                 }
                             />
-                            {/* fallback: redirect về dashboard */}
-                            <Route path="*" element={<Dashboard activeCommand={activeCommand} />} />
+                            {/* fallback: /admin hoặc bất kỳ path lạ dưới /admin -> Dashboard */}
+                            <Route
+                                path="*"
+                                element={<Dashboard activeCommand={activeCommand} />}
+                            />
                         </Routes>
                     </div>
                 </div>
@@ -186,9 +191,48 @@ const App: React.FC = () => {
             <CommandPalette
                 isOpen={isSearchOpen}
                 onClose={() => setIsSearchOpen(false)}
-                onNavigate={handleNavigation} // Command chọn "Dashboard", "Bots", ... => navigate()
+                onNavigate={handleNavigation}
             />
         </div>
+    );
+};
+
+// ================== ADMIN GUARD ==================
+const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    // nếu trong useAdminAuth bạn set 'admin_username' thì xài đúng key này
+    const isLoggedIn = Boolean(localStorage.getItem('admin_username'));
+
+    if (!isLoggedIn) {
+        // Chưa đăng nhập -> đẩy về trang login
+        return <Navigate to="/admin/login" replace />;
+    }
+
+    // Đã login → cho render AdminLayout
+    return <>{children}</>;
+};
+
+// ================== APP ROOT ==================
+const App: React.FC = () => {
+    return (
+        <Routes>
+            {/* Public client site */}
+            <Route path="/" element={<Client />} />
+            <Route path="/article/:id" element={<Client />} />
+            <Route path="/search" element={<Client />} />
+
+            {/* Admin login */}
+            <Route path="/admin/login" element={<Login />} />
+
+            {/* Admin dashboard – bọc guard */}
+            <Route
+                path="/admin/*"
+                element={
+                    <AdminGuard>
+                        <AdminLayout />
+                    </AdminGuard>
+                }
+            />
+        </Routes>
     );
 };
 

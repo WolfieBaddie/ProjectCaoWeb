@@ -14,6 +14,15 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Table(
+        name = "article",
+        indexes = {
+                @Index(
+                        name = "idx_article_client_latest",
+                        columnList = "is_crawled, status, created_at"
+                )
+        }
+)
 public class Article {
 
     @Id

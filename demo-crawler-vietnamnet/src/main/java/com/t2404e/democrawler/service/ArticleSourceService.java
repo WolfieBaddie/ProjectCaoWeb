@@ -1,5 +1,6 @@
 package com.t2404e.democrawler.service;
-
+import com.t2404e.democrawler.common.ArticleStatus;
+import com.t2404e.democrawler.repository.ArticleRepository;
 import com.t2404e.democrawler.dto.ArticleSourceForm;
 import com.t2404e.democrawler.entity.ArticleCategory;
 import com.t2404e.democrawler.entity.ArticleSource;
@@ -9,11 +10,14 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class ArticleSourceService {
     private final ArticleSourceRepository articleSourceRepository;
     private final ArticleCategoryRepository articleCategoryRepository;
+    private final ArticleRepository articleRepository;
 
     @Transactional
     public ArticleSource seedArticleSource(ArticleSourceForm form) {
@@ -66,4 +70,82 @@ public class ArticleSourceService {
         // 4) Lưu DB
         return articleSourceRepository.save(source);
     }
+
+    @Transactional
+    public ArticleSource updateArticleSource(Long id, ArticleSourceForm form) {
+        ArticleSource source = articleSourceRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy ArticleSource với id = " + id));
+
+        ArticleCategory category = null;
+        if (form.getCategoryId() != null) {
+            category = articleCategoryRepository.findById(form.getCategoryId())
+                    .orElseThrow(() ->
+                            new IllegalArgumentException("Không tìm thấy ArticleCategory với id = " + form.getCategoryId()));
+        }
+
+        mapFormToEntity(form, source, category);
+
+        return articleSourceRepository.save(source);
+    }
+
+
+    /**
+     * Xóa mềm ArticleSource:
+     *  - Đánh dấu ArticleSource.status = 1 (inactive)
+     *  - Đồng thời tất cả Article thuộc category của source:
+     *      status = DELETED, updated_at = thời gian hiện tại
+     */
+    @Transactional
+    public void softDeleteArticleSource(Long id) {
+        ArticleSource source = articleSourceRepository.findById(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Không tìm thấy ArticleSource với id = " + id)
+                );
+
+        // 1) Xoá mềm ArticleSource (status = 1)
+        source.setStatus(1);
+        articleSourceRepository.save(source);
+
+        // 2) Xoá mềm toàn bộ Article thuộc category của source này
+        ArticleCategory category = source.getArticleCategory();
+        if (category != null) {
+            articleRepository.updateStatusAndUpdatedAtByCategoryId(
+                    category.getId(),
+                    ArticleStatus.DELETED,
+                    LocalDateTime.now()
+            );
+        }
+    }
+
+    private void mapFormToEntity(ArticleSourceForm form,
+                                 ArticleSource source,
+                                 ArticleCategory category) {
+        // gán category (nếu truyền từ ngoài vào)
+        if (category != null) {
+            source.setArticleCategory(category);
+        }
+
+        source.setTitle(form.getTitle());
+        source.setUrl(form.getUrl());               // vd: https://vietnamnet.vn/chinh-tri
+
+        // selector link ở trang listing để lấy link bài chi tiết
+        source.setLinkSelector(form.getListingSelector());
+
+        // selectors chi tiết bài viết
+        source.setTitleSelector(form.getTitleSelector());
+        source.setDescriptionSelector(form.getDescriptionSelector());
+        source.setContentSelector(form.getContentSelector());
+        source.setImageSelector(form.getImageSelector());
+
+        // selector để xoá rác (quảng cáo, box relate, script, style...)
+        source.setRemoveSelector(form.getRemoveSelector());
+        source.setTimeSelector(form.getTimeSelector());
+
+        // trạng thái (0/1), lấy đúng từ form
+        source.setStatus(form.getStatus());
+
+        // nếu entity ArticleSource có field note thì thêm:
+        // source.setNote(form.getNote());
+    }
+
 }

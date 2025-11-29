@@ -17,10 +17,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
-
+import org.springframework.data.domain.Sort;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.t2404e.democrawler.entity.ArticleImage;
+import org.springframework.web.server.ResponseStatusException;
 
 
 @Slf4j
@@ -189,7 +191,76 @@ public class ArticleService {
         );
     }
 
+    /**
+     * Luồng lấy N bài mới nhất cho client:
+     * - Dùng lại searchClientArticles với page=0.
+     * - Chỉ bài PUBLISHED.
+     */
+    /**
+     * Lấy N bài viết PUBLISHED mới nhất cho client (theo created_at lớn nhất).
+     */
+    @Transactional(readOnly = true)
+    public List<ArticleListItemDto> getClientLatestArticles(int limit) {
+        // Nếu FE không truyền (hoặc truyền <= 0) thì mặc định lấy 3 bài
+        int safeLimit = (limit <= 0) ? 3 : Math.min(limit, 50);
 
+        Pageable pageable = PageRequest.of(0, safeLimit);
+
+        // Query thẳng theo created_at DESC, không đi vòng qua searchClientArticles nữa
+        Page<Article> page = articleRepository.findLatestPublishedForClient(
+                ArticleStatus.PUBLISHED,
+                pageable
+        );
+
+        return page.map(this::toListItemDto).getContent();
+    }
+
+    /**
+     * Luồng search riêng cho CLIENT:
+     * - Luôn ép status = PUBLISHED.
+     * - Tái sử dụng toàn bộ logic + cache của searchCrawledArticles.
+     */
+    @Transactional(readOnly = true)
+    public Page<ArticleListItemDto> searchClientArticles(
+            String keyword,
+            Long categoryId,
+            LocalDateTime fromDate,
+            LocalDateTime toDate,
+            Pageable pageable
+    ) {
+        int size = pageable.getPageSize();
+
+        // Ép status = PUBLISHED để client chỉ nhìn thấy bài đã xuất bản
+        return searchCrawledArticles(
+                keyword,
+                categoryId,
+                ArticleStatus.PUBLISHED,
+                fromDate,
+                toDate,
+                pageable,
+                size
+        );
+    }
+
+
+    /**
+     * Detail bài viết cho CLIENT:
+     *  - Chỉ cho phép xem bài PUBLISHED
+     */
+    @Transactional(readOnly = true)
+    public ArticleDetailDto getClientArticleDetail(Long id) {
+        ArticleDetailDto dto = getArticleDetail(id); // hàm admin đang dùng
+
+        if (dto.getStatus() != ArticleStatus.PUBLISHED) {
+            // Có thể dùng ResponseStatusException để trả 404
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Bài viết không tồn tại hoặc chưa được xuất bản"
+            );
+        }
+
+        return dto;
+    }
 
 /**
      * Search các bài ĐÃ CRAWL (is_crawled = 1) có phân trang + cache Redis.

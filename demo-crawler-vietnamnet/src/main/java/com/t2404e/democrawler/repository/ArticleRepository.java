@@ -27,6 +27,18 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     int updateStatusByCategoryId(@Param("categoryId") Long categoryId,
                                  @Param("status") ArticleStatus status);
 
+    @Modifying
+    @Transactional
+    @Query("""
+           UPDATE Article a 
+              SET a.status = :status,
+                  a.updated_at = :updatedAt
+            WHERE a.articleCategory.id = :categoryId
+           """)
+    int updateStatusAndUpdatedAtByCategoryId(@Param("categoryId") Long categoryId,
+                                             @Param("status") ArticleStatus status,
+                                             @Param("updatedAt") LocalDateTime updatedAt);
+
     @Query("select a.url from Article a where a.url in :urls")
     List<String> findAllUrlByUrlIn(Collection<String> urls);
     /**
@@ -60,5 +72,27 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
             Pageable pageable
     );
 
+    /**
+     * Lấy danh sách bài viết PUBLISHED mới nhất cho CLIENT,
+     * sắp xếp theo created_at DESC.
+     * Không filter keyword / category / date, chỉ cần bài đã crawl + publish.
+     */
+    @Query("""
+       SELECT a
+       FROM Article a
+       WHERE a.isCrawled = true
+         AND a.status = :status
+       ORDER BY a.created_at DESC
+       """)
+    Page<Article> findLatestPublishedForClient(
+            @Param("status") ArticleStatus status,
+            Pageable pageable
+    );
 
+
+
+    /**
+     * Đếm số bài viết thuộc category mà KHÔNG ở trạng thái DELETED.
+     */
+    long countByArticleCategoryIdAndStatusNot(Long categoryId, ArticleStatus status);
 }

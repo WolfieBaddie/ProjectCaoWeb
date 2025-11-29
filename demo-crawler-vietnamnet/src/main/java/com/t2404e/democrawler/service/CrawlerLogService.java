@@ -1,11 +1,13 @@
 package com.t2404e.democrawler.service;
 
+import com.t2404e.democrawler.entity.ArticleCategory;
 import com.t2404e.democrawler.dto.ArticleSourceDto;
 import com.t2404e.democrawler.dto.CrawlerLogDetailDto;
 import com.t2404e.democrawler.dto.CrawlerLogDto;
 import com.t2404e.democrawler.entity.ArticleSource;
 import com.t2404e.democrawler.entity.CrawlerLog;
 import com.t2404e.democrawler.entity.CrawlerLog.BotType;
+import com.t2404e.democrawler.repository.ArticleCategoryRepository;
 import com.t2404e.democrawler.repository.ArticleSourceRepository;
 import com.t2404e.democrawler.repository.CrawlerLogRepository;
 import com.t2404e.democrawler.repository.CrawlerLogSourceStats;
@@ -33,6 +35,7 @@ public class CrawlerLogService {
 
     private final CrawlerLogRepository repo;
     private final ArticleSourceRepository articleSourceRepository;
+    private final ArticleCategoryRepository articleCategoryRepository; // 👈 thêm
 
     private void save(String level,
                       BotType botType,
@@ -200,33 +203,52 @@ public class CrawlerLogService {
 
         Page<CrawlerLog> result = repo.findAll(spec, pageable);
 
-        return result.map(l -> new CrawlerLogDto(
-                l.getId(),
-                l.getBotType() != null ? l.getBotType().name() : null,
-                l.getLevel(),
-                l.getMessage(),
-                l.getUrl(),
-                l.getSourceId(),
-                l.getArticleId(),
-                l.getCategoryId(),
-                l.getCreatedAt()
-        ));
+        return result.map(l -> {
+            String categoryName = resolveCategoryName(categoryId);
+
+            return new CrawlerLogDto(
+                    l.getId(),
+                    l.getBotType() != null ? l.getBotType().name() : null,
+                    l.getLevel(),
+                    l.getMessage(),
+                    l.getUrl(),
+                    l.getSourceId(),
+                    l.getArticleId(),
+                    categoryId,
+                    categoryName,          // 👈 tên category
+                    l.getCreatedAt()
+            );
+        });
     }
 
 
     public Optional<CrawlerLogDetailDto> getLogDetail(Long id) {
         return repo.findById(id)
-                .map(l -> new CrawlerLogDetailDto(
-                        l.getId(),
-                        l.getBotType() != null ? l.getBotType().name() : null,
-                        l.getLevel(),
-                        l.getMessage(),
-                        l.getUrl(),
-                        l.getSourceId(),
-                        l.getArticleId(),
-                        l.getException(),// stacktrace / exceptionText
-                        l.getCreatedAt()
-                ));
+                .map(l -> {
+                    Long categoryId = l.getCategoryId();
+                    String categoryName = resolveCategoryName(categoryId);
+
+                    return new CrawlerLogDetailDto(
+                            l.getId(),
+                            l.getBotType() != null ? l.getBotType().name() : null,
+                            l.getLevel(),
+                            l.getMessage(),
+                            l.getUrl(),
+                            l.getSourceId(),
+                            l.getArticleId(),
+                            categoryId,      // 👈 id
+                            categoryName,    // 👈 name
+                            l.getException(),
+                            l.getCreatedAt()
+                    );
+                });
+    }
+
+    private String resolveCategoryName(Long categoryId) {
+        if (categoryId == null) return null;
+        return articleCategoryRepository.findById(categoryId)
+                .map(ArticleCategory::getName)
+                .orElse(null);
     }
 
 }

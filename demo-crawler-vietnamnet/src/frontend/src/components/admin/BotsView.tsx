@@ -2,8 +2,17 @@ import React, { useState, useMemo, useEffect } from 'react';
 import Card from './Card.tsx';
 import InputGroup from './InputGroup.tsx';
 import SelectGroup from './SelectGroup.tsx';
-import { ArticleSource, CrawlerConfig } from '../../types.ts';
-import { ActiveCommand } from '../../App.tsx';
+import { ActiveCommand } from '../../../App.tsx';
+
+// import { ArticleSource, CrawlerConfig } from '../../../types.ts';
+import { CrawlerConfig } from '../../../types.ts';
+import {
+    useAdminArticleSources,
+    ArticleSource,
+} from '../../hooks/admin/useAdminArticleSource.ts';
+import { useAdminArticleCategories } from '../../hooks/admin/useAdminArticleCategory';
+// chỉnh lại path nếu project bạn khác: chỉ cần trỏ tới file useAdminArticleCategory.ts
+
 
 // --- Icons ---
 const GlobeIcon = ({ className = "h-5 w-5 text-gray-400" }) => (
@@ -24,42 +33,6 @@ const PlusIcon = ({ className = "h-5 w-5" }) => (
     </svg>
 );
 
-// --- Mock Data ---
-const initialSources: ArticleSource[] = [
-    {
-        id: 'src_1',
-        name: 'TechCrunch',
-        url: 'https://techcrunch.com',
-        categoryId: 'cat_1',
-        linkSelector: 'a.post-block__title__link',
-        titleSelector: 'h1.article__title',
-        descriptionSelector: 'div.article-content > p:first-child',
-        contentSelector: 'div.article-content',
-        removalSelector: '.ad-unit, script, style',
-        imageSelector: 'img.article__featured-image',
-        enabled: true
-    },
-    {
-        id: 'src_2',
-        name: 'Reuters Business',
-        url: 'https://reuters.com/business',
-        categoryId: 'cat_2',
-        linkSelector: 'a.media-story-card__heading__link',
-        titleSelector: 'h1.article-header__title',
-        descriptionSelector: 'p.article-body__content__paragraph',
-        contentSelector: 'div.article-body__content',
-        removalSelector: 'div.ad, .share-bar',
-        imageSelector: 'div.article-header__image img',
-        enabled: false
-    }
-];
-
-const mockCategories = [
-    { id: 'cat_1', name: 'Technology' },
-    { id: 'cat_2', name: 'Business' },
-    { id: 'cat_3', name: 'Science' },
-    { id: 'cat_4', name: 'Health' },
-];
 
 interface BotsViewProps {
     config: CrawlerConfig;
@@ -70,9 +43,23 @@ interface BotsViewProps {
     activeCommand?: ActiveCommand | null;
 }
 
+
 const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
-    // --- State ---
-    const [sources, setSources] = useState<ArticleSource[]>(initialSources);
+    const {
+        sources,
+        loading,
+        error,
+        saveSource,
+        removeSource,
+        toggleStatus,
+    } = useAdminArticleSources();
+
+    const {
+        categories,
+        loading: loadingCategories,
+        error: categoriesError,
+    } = useAdminArticleCategories();
+
     const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -82,16 +69,25 @@ const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
         id: '',
         name: '',
         url: '',
-        categoryId: mockCategories[0].id,
+        categoryId: '',           // sẽ set bằng categories[0].id sau khi load
         linkSelector: '',
         titleSelector: '',
         descriptionSelector: '',
         contentSelector: '',
         removalSelector: '',
         imageSelector: '',
+        timeSelector: '',
         enabled: true
     });
 
+    useEffect(() => {
+        if (!formData.categoryId && categories && categories.length > 0) {
+            setFormData((prev) => ({
+                ...prev,
+                categoryId: String(categories[0].id), // FE dùng string, backend id là number
+            }));
+        }
+    }, [categories]);
     // --- Effects for Command Palette ---
     useEffect(() => {
         if (activeCommand && activeCommand.view === 'bots') {
@@ -120,48 +116,70 @@ const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
     };
 
     const handleAddNew = () => {
-        const newId = `src_${Date.now()}`;
+        // chọn category đầu tiên trong list, nếu chưa có thì để rỗng
+        const defaultCategoryId =
+            categories && categories.length > 0 ? String(categories[0].id) : '';
+
         const newSource: ArticleSource = {
-            id: newId,
+            id: '',
             name: 'New Source',
             url: 'https://',
-            categoryId: mockCategories[0].id,
+            categoryId: defaultCategoryId,
             linkSelector: '',
             titleSelector: '',
             descriptionSelector: '',
             contentSelector: '',
-            removalSelector: '',
             imageSelector: '',
-            enabled: true
+            timeSelector: '',      // <<< THÊM
+            removalSelector: '',
+            enabled: true,
         };
-        setSources([...sources, newSource]);
-        setSelectedSourceId(newId);
+
+        setSelectedSourceId('NEW');
         setFormData(newSource);
         setIsEditing(true);
     };
 
-    const handleDelete = (e: React.MouseEvent, id: string) => {
+
+
+
+    const handleDelete = async (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
-        if (window.confirm('Are you sure you want to delete this source?')) {
-            setSources(sources.filter((s) => s.id !== id));
+        if (!window.confirm('Are you sure you want to delete this source?')) {
+            return;
+        }
+
+        try {
+            await removeSource(id);
             if (selectedSourceId === id) {
                 setSelectedSourceId(null);
                 setIsEditing(false);
             }
-            showToast('Source deleted.');
+            showToast('Source soft-deleted (status = 1, articles = DELETED).');
+        } catch (err: any) {
+            console.error('Delete source failed', err);
+            showToast(err.message || 'Delete source failed');
         }
     };
 
+
     // Giữ lại toggle status ở list bên trái (bạn có thể bỏ nếu muốn chỉ dùng dropdown)
-    const handleToggleStatus = (e: React.MouseEvent, source: ArticleSource) => {
+    const handleToggleStatus = async (
+        e: React.MouseEvent,
+        source: ArticleSource
+    ) => {
         e.stopPropagation();
-        const updatedSource = { ...source, enabled: !source.enabled };
-        setSources(sources.map((s) => (s.id === source.id ? updatedSource : s)));
-        if (selectedSourceId === source.id) {
-            setFormData((prev) => ({ ...prev, enabled: updatedSource.enabled }));
+        try {
+            await toggleStatus(source);
+            showToast(
+                `Source ${!source.enabled ? 'enabled (status=1)' : 'disabled (status=0)'}.`
+            );
+        } catch (err: any) {
+            console.error('Toggle status failed', err);
+            showToast(err.message || 'Toggle status failed');
         }
-        showToast(`Source ${updatedSource.enabled ? 'enabled' : 'disabled'}.`);
     };
+
 
     const handleFormChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -170,11 +188,17 @@ const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSaveConfig = () => {
-        console.log('POST /admin/api/seed-article-source', formData);
-        setSources(sources.map((s) => (s.id === formData.id ? formData : s)));
-        showToast('Configuration saved successfully!');
+    const handleSaveConfig = async () => {
+        try {
+            await saveSource(formData);
+            showToast('Configuration saved to backend successfully!');
+            setIsEditing(false);
+        } catch (err: any) {
+            console.error('Save config failed', err);
+            showToast(err.message || 'Save configuration failed');
+        }
     };
+
 
     // Dropdown Active 1/0
     const handleStatusDropdownChange = (
@@ -182,13 +206,9 @@ const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
     ) => {
         const isActive = e.target.value === '1';
         setFormData((prev) => ({ ...prev, enabled: isActive }));
-        setSources((prev) =>
-            prev.map((s) =>
-                s.id === formData.id ? { ...s, enabled: isActive } : s
-            )
-        );
-        showToast(`Source ${isActive ? 'enabled' : 'disabled'}.`);
+        // Không cần setSources ở đây nữa, list sẽ được reload sau khi save
     };
+
 
     return (
         <div className="space-y-6">
@@ -268,11 +288,6 @@ const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center mt-3">
-                                    <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider bg-gray-100 px-1.5 py-0.5 rounded">
-                                        {mockCategories.find(
-                                            (c) => c.id === source.categoryId
-                                        )?.name || 'Uncategorized'}
-                                    </span>
 
                                     {/* Quick Actions on Hover */}
                                     <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -389,15 +404,22 @@ const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
                                                 value={formData.categoryId}
                                                 onChange={handleFormChange}
                                             >
-                                                {mockCategories.map((c) => (
-                                                    <option
-                                                        key={c.id}
-                                                        value={c.id}
-                                                    >
-                                                        {c.name}
-                                                    </option>
-                                                ))}
+                                                {loadingCategories && (
+                                                    <option value="">Loading categories...</option>
+                                                )}
+
+                                                {!loadingCategories && categories.length === 0 && (
+                                                    <option value="">No categories available</option>
+                                                )}
+
+                                                {!loadingCategories &&
+                                                    categories.map((c) => (
+                                                        <option key={c.id} value={String(c.id)}>
+                                                            {c.name} {/* nếu muốn thêm số bài: `${c.name} (${c.articleCount})` */}
+                                                        </option>
+                                                    ))}
                                             </SelectGroup>
+
                                             <InputGroup
                                                 label="Link Selector"
                                                 name="linkSelector"
@@ -412,6 +434,53 @@ const BotsView: React.FC<BotsViewProps> = ({ showToast, activeCommand }) => {
                                         <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wide">
                                             Content Selectors
                                         </h4>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <InputGroup
+                                                label="Title Selector"
+                                                name="titleSelector"
+                                                value={formData.titleSelector}
+                                                onChange={handleFormChange}
+                                                placeholder="h1.title"
+                                            />
+                                            <InputGroup
+                                                label="Description Selector"
+                                                name="descriptionSelector"
+                                                value={formData.descriptionSelector}
+                                                onChange={handleFormChange}
+                                                placeholder="meta[name=description]"
+                                            />
+                                            <InputGroup
+                                                label="Content Selector"
+                                                name="contentSelector"
+                                                value={formData.contentSelector}
+                                                onChange={handleFormChange}
+                                                placeholder=".content-body"
+                                            />
+                                            <InputGroup
+                                                label="Image Selector"
+                                                name="imageSelector"
+                                                value={formData.imageSelector}
+                                                onChange={handleFormChange}
+                                                placeholder="img.featured"
+                                            />
+                                            <InputGroup
+                                                label="Time Selector"
+                                                name="timeSelector"                      // <<< THÊM
+                                                value={formData.timeSelector}
+                                                onChange={handleFormChange}
+                                                placeholder="div.bread-crumb-detail__time"
+                                            />
+                                        </div>
+
+                                        <InputGroup
+                                            label="Removal Selector (CSS)"
+                                            name="removalSelector"
+                                            value={formData.removalSelector}
+                                            onChange={handleFormChange}
+                                            placeholder=".ads, .popup, script"
+                                        />
+
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <InputGroup

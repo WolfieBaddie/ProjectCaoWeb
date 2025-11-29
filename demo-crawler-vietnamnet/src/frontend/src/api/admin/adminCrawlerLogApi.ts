@@ -29,6 +29,7 @@ export interface CrawlerLogDto {
     sourceId: number | null;
     categoryId: number | null;
     articleId: number | null;
+    categoryName?: string | null;  // 👈 thêm
     createdAt: string;
 }
 
@@ -40,9 +41,12 @@ export interface CrawlerLogDetailDto {
     url: string | null;
     sourceId: number | null;
     articleId: number | null;
+    categoryId: number | null;      // 👈 thêm
+    categoryName?: string | null;   // 👈 thêm
     exception: string | null;
     createdAt: string;
 }
+
 
 export interface PageResponse<T> {
     content: T[];
@@ -91,6 +95,7 @@ function buildQuery(params: Record<string, unknown>) {
 export async function fetchArticleSources(): Promise<ArticleSourceSummaryDto[]> {
     const res = await fetch(
         `${API_BASE_URL}/admin/api/crawler/logs/sources-overview`,
+        {credentials: 'include'}
     );
 
     const text = await res.text();
@@ -135,7 +140,10 @@ export async function fetchCrawlerLogs(
     });
 
     const res = await fetch(
-        `${API_BASE_URL}/admin/api/crawler/logs${qs}`
+        `${API_BASE_URL}/admin/api/crawler/logs${qs}`,
+        {
+            credentials: 'include',
+        }
     );
 
     const text = await res.text();

@@ -6,7 +6,7 @@ import {
     CrawlerLogDto,
     BotType,
     LogLevel,
-} from '../api/admin/adminCrawlerLogApi';
+} from '../../api/admin/adminCrawlerLogApi';
 
 export interface UseAdminLogsOptions {
     sourceId: number;

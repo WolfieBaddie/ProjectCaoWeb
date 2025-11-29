@@ -1,12 +1,12 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import SchedulerCard from './SchedulerCard.tsx';
-import {ActiveCommand} from '../../App.tsx';
-import {useAdminArticles} from '../hooks/useAdminArticle.ts';
-import type {ArticleListItem, ArticleDetail} from '../api/admin/adminArticleApi.ts';
-import {useArticleCategories} from '../hooks/useArticleCategories';
-import ArticleEditDrawer from '../components/admin/ArticleEditDrawer.tsx';
+import {ActiveCommand} from '../../../App.tsx';
+import {useAdminArticles} from "@/src/hooks/admin/useAdminArticle.ts";
+import type {ArticleListItem, ArticleDetail} from '../../api/admin/adminArticleApi.ts';
+import { updateArticleStatus, softDeleteArticle } from '../../api/admin/adminArticleApi.ts';
+import {useArticleCategories} from "@/src/hooks/admin/useArticleCategories.ts";
+import ArticleEditDrawer from '../../components/admin/ArticleEditDrawer.tsx';
 import {Link} from "react-router-dom"; // chỉnh path cho đúng
-
 
 interface StatCardProps {
     title: string;
@@ -45,6 +45,7 @@ const Dashboard: React.FC<DashboardProps> = ({ activeCommand, onEditArticle }) =
 
     // trạng thái muốn apply cho các bài được chọn (UI-only)
     const [bulkStatus, setBulkStatus] = useState<string>('');
+    const [isApplyingBulk, setIsApplyingBulk] = useState(false);
 
     const {categories, loading: loadingCategories} = useArticleCategories();
 
@@ -177,16 +178,52 @@ const Dashboard: React.FC<DashboardProps> = ({ activeCommand, onEditArticle }) =
     };
 
 // UI-only: hiện tại chỉ log ra console, chưa gọi API
-    const handleApplyBulkStatus = () => {
-        if (!bulkStatus || selectedIds.length === 0) return;
+    // Gọi backend để đổi trạng thái hàng loạt
+    const handleApplyBulkStatus = async () => {
+        if (!bulkStatus || selectedIds.length === 0 || isApplyingBulk) return;
 
-        console.log('Bulk change status (UI-only)', {
-            ids: selectedIds,
-            newStatus: bulkStatus,
-        });
+        setIsApplyingBulk(true);
 
-        // TODO: sau này gọi API đổi status, rồi refetch()
+        try {
+            const tasks = selectedIds.map((id) => {
+                // Nếu chọn DELETED thì dùng luồng soft delete
+                if (bulkStatus === 'DELETED') {
+                    return softDeleteArticle(id);
+                }
+
+                // Các trạng thái khác dùng updateArticleStatus
+                return updateArticleStatus(id, bulkStatus);
+            });
+
+            const results = await Promise.allSettled(tasks);
+
+            const successCount = results.filter(
+                (r) => r.status === 'fulfilled'
+            ).length;
+            const failCount = results.length - successCount;
+
+            console.log('Bulk change status result', { successCount, failCount });
+
+            if (failCount > 0) {
+                alert(
+                    `Đổi trạng thái xong.\nThành công: ${successCount}\nThất bại: ${failCount}`
+                );
+            } else {
+                // tất cả OK
+                // Có thể đổi sang toast sau
+                console.info('Đổi trạng thái thành công cho tất cả bài đã chọn.');
+            }
+
+            // Cách nhanh gọn: reload lại dashboard để refetch dữ liệu
+            window.location.reload();
+        } catch (err) {
+            console.error('Bulk change status error', err);
+            alert('Có lỗi khi đổi trạng thái hàng loạt. Vui lòng thử lại.');
+        } finally {
+            setIsApplyingBulk(false);
+        }
     };
+
 
 
 // Sau khi update thành công
@@ -401,21 +438,22 @@ const Dashboard: React.FC<DashboardProps> = ({ activeCommand, onEditArticle }) =
                                     <option value="">Đổi trạng thái…</option>
                                     <option value="DRAFT">DRAFT</option>
                                     <option value="PUBLISHED">PUBLISHED</option>
-                                    <option value="FAILED">FAILED</option>
+                                    {/* <option value="FAILED">FAILED</option>  // TẠM THỜI BỎ */}
                                     <option value="DELETED">DELETED</option>
                                 </select>
                                 <button
                                     onClick={handleApplyBulkStatus}
-                                    disabled={!bulkStatus || selectedIds.length === 0}
+                                    disabled={!bulkStatus || selectedIds.length === 0 || isApplyingBulk}
                                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition
-            ${
-                                        !bulkStatus || selectedIds.length === 0
+        ${
+                                        !bulkStatus || selectedIds.length === 0 || isApplyingBulk
                                             ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                             : 'bg-sky-600 text-white hover:bg-sky-700'
                                     }`}
                                 >
-                                    Áp dụng (UI-only)
+                                    {isApplyingBulk ? 'Đang áp dụng…' : 'Áp dụng'}
                                 </button>
+
                             </div>
                         </div>
                         {/* Cards grid – các card đồng đều kích thước */}

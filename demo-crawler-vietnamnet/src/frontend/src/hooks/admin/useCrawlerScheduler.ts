@@ -4,7 +4,7 @@ import {
     getCrawlerBotConfig,
     setContentCrawlerEnabled,
     setLinkCrawlerEnabled,
-} from '../api/admin/adminCrawlerConfigApi.ts';
+} from '../../api/admin/adminCrawlerConfigApi.ts';
 
 export type ScheduleMode = 'always' | 'window';
 

@@ -6,7 +6,7 @@ import {
     fetchArticleCategories,
     softDeleteArticleCategory,
     updateArticleCategory,
-} from '../api/admin/adminArticleCategory.ts';
+} from '../../api/admin/adminArticleCategory';
 
 export interface UseAdminArticleCategoriesResult {
     categories: ArticleCategory[];

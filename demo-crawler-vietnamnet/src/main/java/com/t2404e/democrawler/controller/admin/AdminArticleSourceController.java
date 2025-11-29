@@ -1,5 +1,6 @@
 package com.t2404e.democrawler.controller.admin;
 import com.t2404e.democrawler.dto.ArticleSourceForm;
+import com.t2404e.democrawler.dto.ArticleSourceSummaryDto;
 import com.t2404e.democrawler.dto.RunSourceRequest;
 import com.t2404e.democrawler.entity.ArticleSource;
 import com.t2404e.democrawler.messaging.CrawlMessage;
@@ -29,23 +30,6 @@ public class AdminArticleSourceController {
     private final ArticleSourceService articleSourceService;
     private final CrawlerAdminSourceService crawlerAdminSourceService;
 
-    public record ArticleSourceSummaryDto(
-            Long id,
-            String name,
-            String baseUrl,
-            String defaultCategorySlug,
-            boolean active
-    ) {
-        public static ArticleSourceSummaryDto fromEntity(ArticleSource src) {
-            return new ArticleSourceSummaryDto(
-                    src.getId(),
-                    src.getTitle(),
-                    src.getUrl(),
-                    src.getArticleCategory() != null ? src.getArticleCategory().getName() : null,
-                    src.getStatus() == 1 // tuỳ bạn định nghĩa
-            );
-        }
-    }
 
     // ====== Seed theo category (href kiểu /chinh-tri). Thêm force để chạy lại.
     // GET /admin/api/seed-category?href=/chinh-tri&sourceId=1[&force=true]
@@ -70,9 +54,11 @@ public class AdminArticleSourceController {
     // Seed / upsert ArticleSource trong DB
     // POST /admin/api/seed-article-source
     @PostMapping("/seed-article-source")
-    public String seedArticleSource(@RequestBody @Valid ArticleSourceForm form) {
-        ArticleSource saved = articleSourceService.seedArticleSource(form);
-        return "Seed article source: " + saved.getTitle();
+    public ResponseEntity<String> seedArticleSource(
+            @Valid @RequestBody ArticleSourceForm form
+    ) {
+        articleSourceService.seedArticleSource(form);
+        return ResponseEntity.ok("Seed article source thành công");
     }
 
     // ====== Seed 1 LISTING cụ thể (ví dụ /chinh-tri/su-kien)
@@ -135,6 +121,23 @@ public class AdminArticleSourceController {
         return entities.stream()
                 .map(ArticleSourceSummaryDto::fromEntity)
                 .toList();
+    }
+
+    // Sửa 1 ArticleSource theo id
+    // PUT /admin/api/article-sources/{id}
+    @PutMapping("/article-sources/{id}")
+    public ResponseEntity<Void> updateArticleSource(
+            @PathVariable Long id,
+            @Valid @RequestBody ArticleSourceForm form
+    ) {
+        articleSourceService.updateArticleSource(id, form);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/article-sources/{id}")
+    public ResponseEntity<Void> softDeleteArticleSource(@PathVariable Long id) {
+        articleSourceService.softDeleteArticleSource(id);
+        return ResponseEntity.noContent().build();
     }
 
     // ====== Helpers (giống hệt bản cũ) ======

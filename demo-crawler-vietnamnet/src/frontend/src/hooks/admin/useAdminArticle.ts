@@ -4,7 +4,7 @@ import {
     ArticleListItem,
     fetchArticles,
     PageResponse,
-} from '../api/admin/adminArticleApi.ts';
+} from '../../api/admin/adminArticleApi.ts';
 
 export interface UseAdminArticlesOptions {
     initialPageSize?: number;

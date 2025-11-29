@@ -11,6 +11,7 @@ public record CrawlerLogDto (
         Long sourceId,
         Long articleId,
         Long categoryId,
+        String categoryName,
         LocalDateTime createdAt
 )
 {}

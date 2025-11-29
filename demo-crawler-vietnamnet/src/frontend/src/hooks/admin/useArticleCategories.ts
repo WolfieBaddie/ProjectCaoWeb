@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArticleCategoryDto, fetchArticleCategories } from '../api/admin/adminArticleApi';
+import { ArticleCategoryDto, fetchArticleCategories } from '../../api/admin/adminArticleApi';
 
 export function useArticleCategories() {
     const [categories, setCategories] = useState<ArticleCategoryDto[]>([]);

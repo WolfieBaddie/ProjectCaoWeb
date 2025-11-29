@@ -7,6 +7,7 @@ import lombok.Data;
 public class ArticleSourceForm {
     @NotNull
     @Positive
+    @NotBlank(message = "Danh mục là bắt buộc")
     private Long categoryId;
 
     @NotNull
@@ -19,39 +20,43 @@ public class ArticleSourceForm {
     private String slug;               // ex: "chinh-tri"
 
     @NotBlank
+    @NotBlank(message = "Tên nguồn không được để trống")
     private String title;
 
     @NotBlank
+    @NotBlank(message = "Mô tả không được để trống")
     private String description;
 
-    @NotBlank
+    @NotBlank(message = "URL không được để trống")
     private String url;
 
-    @NotBlank
     @Size(max = 500)
+    @NotBlank(message = "Link selector không được để trống")
     private String listingSelector;    // "a[href]"
 
-    @NotBlank
     @Size(max = 1000)
+    @NotBlank(message = "Content selector không được để trống")
     private String contentSelector;    // "article, .maincontent, ..."
 
-    @NotBlank
     @Size(max = 1000)
+    @NotBlank(message = "Description selector không được để trống")
     private String descriptionSelector;
 
-    @NotBlank
     @Size(max = 1000)
+    @NotBlank(message = "Title selector không được để trống")
     private String titleSelector;
 
-    @NotBlank
     @Size(max = 1000)
+    @NotBlank(message = "Image selector không được để trống")
     private String imageSelector;
 
     @Size(max = 1000)
+    @NotBlank(message = "Remove selector không được để trống")
     private String removeSelector;
 
     // THÊM MỚI: selector lấy thời gian bài viết
     @Size(max = 1000)
+    @NotBlank(message = "Time selector không được để trống")
     private String timeSelector;
 
     @Size(max = 500)

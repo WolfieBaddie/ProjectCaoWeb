@@ -97,7 +97,7 @@ export async function fetchArticles(
     const url = `${API_BASE_URL}/admin/api/articles?${searchParams.toString()}`;
 
     const res = await fetch(url, {
-        credentials: 'include', // gửi cookie/session
+        credentials: 'include',
     });
 
     if (!res.ok) {
@@ -126,6 +126,13 @@ export interface UpdateArticlePayload {
     status: string;
 }
 
+// Thêm ngay sau ArticleDetail + các interface khác
+export interface DeleteArticleResponse {
+    id: number;
+    status: string;
+    message: string;
+}
+
 export async function updateArticle(
     id: number,
     payload: UpdateArticlePayload
@@ -146,3 +153,49 @@ export async function updateArticle(
 
     return (await res.json()) as ArticleDetail;
 }
+
+// Đổi trạng thái 1 bài viết (chỉ gửi field status, backend cho phép partial update)
+export async function updateArticleStatus(
+    id: number,
+    status: string
+): Promise<ArticleDetail> {
+    const url = `${API_BASE_URL}/admin/api/articles/${id}`;
+
+    const payload = {
+        status, // DRAFT | PUBLISHED | DELETED (phù hợp enum ArticleStatus backend)
+    };
+
+    const res = await fetch(url, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+    }
+
+    return (await res.json()) as ArticleDetail;
+}
+
+// Soft delete 1 bài (xóa mềm: status = DELETED, dùng đúng endpoint @DeleteMapping)
+export async function softDeleteArticle(
+    id: number
+): Promise<DeleteArticleResponse> {
+    const url = `${API_BASE_URL}/admin/api/articles/${id}`;
+
+    const res = await fetch(url, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
+
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+    }
+
+    return (await res.json()) as DeleteArticleResponse;
+}
+
