@@ -1,6 +1,6 @@
 # ProjectCaoWeb
 
-Hệ thống thu thập, quản lý và tái sử dụng nội dung bài viết.
+Hệ thống thu thập, quản lý và tái sử dụng nội dung bài viết phục vụ cho **SEO** và **marketing cá nhân** – hiểu nôm na là hệ thống hỗ trợ đăng bài, xây dựng thương hiệu bản thân, **không phải** một trang tin chính thống.
 
 ---
 
