@@ -287,8 +287,7 @@ const ArticleDetail: React.FC = () => {
                     !relatedError &&
                     related.length === 0 && (
                         <p className="text-sm text-gray-500">
-                            Hiện chưa có bài viết liên quan (hoặc không
-                            lấy được categoryId).
+                            Hiện chưa có bài viết liên quan.
                         </p>
                     )}
 
